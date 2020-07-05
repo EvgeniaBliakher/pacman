@@ -5,6 +5,46 @@ using Microsoft.Xna.Framework.Input;
 
 namespace pacman
 {
+    public static class Global
+    {
+        public static int PICTURESIZE = 24;
+        
+        public static char WALL = 'X';
+        public static char FLOOR = ' ';
+        public static char DOT = 'd';
+        public static char BIGDOT = 'D';
+        public static char RIGHT = '>';
+        public static char LEFT = '<';
+        public static char UP = '^';
+        public static char DOWN = 'v';
+        
+        public static Dictionary<char, Rectangle> ItemToSourceRectangle;
+        static Global()
+        {
+            ItemToSourceRectangle = new Dictionary<char, Rectangle>();
+            ItemToSourceRectangle.Add(WALL, SourceRectangle.wall);
+            ItemToSourceRectangle.Add(FLOOR, SourceRectangle.floor);
+            ItemToSourceRectangle.Add(DOT, SourceRectangle.dot);
+            ItemToSourceRectangle.Add(BIGDOT, SourceRectangle.bigDot);
+            ItemToSourceRectangle.Add(RIGHT, SourceRectangle.right);
+            ItemToSourceRectangle.Add(LEFT, SourceRectangle.left);
+            ItemToSourceRectangle.Add(UP, SourceRectangle.up);
+            ItemToSourceRectangle.Add(DOWN, SourceRectangle.down);
+        }
+    }
+    
+    public static class SourceRectangle
+    {
+        public static Rectangle wall = new Rectangle(0,0,24,24);
+        public static Rectangle floor = new Rectangle(24,0,24,24);
+        public static Rectangle dot = new Rectangle(48,0,24,24);
+        public static Rectangle bigDot = new Rectangle(72,0,24,24);
+        public static Rectangle right = new Rectangle(96,0,24,24);
+        public static Rectangle left = new Rectangle(120,0,24,24);
+        public static Rectangle up = new Rectangle(144,0,24,24);
+        public static Rectangle down = new Rectangle(168,0,24,24);
+    }
+    
     public class Game1 : Game
     {
         private GraphicsDeviceManager _graphics;
@@ -19,7 +59,8 @@ namespace pacman
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             
-            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map.txt");
+            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map.txt");   
+            //ToDo: Change to relative path
         }
 
         protected override void Initialize()
@@ -35,7 +76,7 @@ namespace pacman
 
             // TODO: use this.Content to load your game content here
             
-            texture = this.Content.Load<Texture2D>("wall_floor_dots");
+            texture = this.Content.Load<Texture2D>("all_icons");
         }
 
         protected override void Update(GameTime gameTime)
@@ -54,11 +95,11 @@ namespace pacman
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
             // TODO: Add your drawing code here
-            _spriteBatch.Begin();
-           // _spriteBatch.Draw(texture, Vector2.Zero, sourceRectangle: Global.ItemToSourceRectangle['D'] ,Color.White);
-           int offsetX = 0;
-           int offsetY = 0;
-           for (int x = 0; x < gamePlan.width; x++)
+            _spriteBatch.Begin(); 
+            
+            int offsetX = 0; 
+            int offsetY = 0; 
+            for (int x = 0; x < gamePlan.width; x++)
            {
                for (int y = 0; y < gamePlan.height; y++)
                {
@@ -78,32 +119,4 @@ namespace pacman
         }
     }
 
-    public static class SourceRectangle
-    {
-        public static Rectangle wall = new Rectangle(0,0,24,24);
-        public static Rectangle floor = new Rectangle(24,0,24,24);
-        public static Rectangle dot = new Rectangle(48,0,24,24);
-        public static Rectangle bigDot = new Rectangle(72,0,24,24);
-        
-    }
-
-    public static class Global
-    {
-        public static int PICTURESIZE = 24;
-        
-        public static char WALL = 'X';
-        public static char FLOOR = ' ';
-        public static char DOT = 'd';
-        public static char BIGDOT = 'D';
-
-        public static Dictionary<char, Rectangle> ItemToSourceRectangle;
-        static Global()
-        {
-            ItemToSourceRectangle = new Dictionary<char, Rectangle>();
-            ItemToSourceRectangle.Add(WALL, SourceRectangle.wall);
-            ItemToSourceRectangle.Add(FLOOR, SourceRectangle.floor);
-            ItemToSourceRectangle.Add(DOT, SourceRectangle.dot);
-            ItemToSourceRectangle.Add(BIGDOT, SourceRectangle.bigDot);
-        }
-    }
 }
