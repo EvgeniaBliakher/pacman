@@ -5,9 +5,9 @@ namespace pacman
 {
     public class GamePlan
     {
-        private char[,] map;
-        private int height;
-        private int width;
+        public char[,] map;
+        public int height;
+        public int width;
         public Pacman pacman;
         
 
