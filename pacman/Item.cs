@@ -11,11 +11,13 @@ namespace pacman
         public int height;
         public int width;
         public Pacman pacman;
+        public int dotPoints;
         
 
-        public GamePlan(string pathToMap)
+        public GamePlan(string pathToMap, int dotPoints)
         {
             readMapFromFile(pathToMap);
+            this.dotPoints = dotPoints;
         }
 
         private void readMapFromFile(string pathToFile)
@@ -124,7 +126,7 @@ namespace pacman
     {
         public Tuple<int, int>  Direction; // direction in x and y, one of them always zero - no diagonal movement
         public char DirectionChar;
-        public Tuple<int, int> WishedDirection;
+        private Tuple<int, int> WishedDirection;
 
         public Pacman(int x, int y, GamePlan gamePlan, char directionChar) : base(x, y, gamePlan)
         {
@@ -163,9 +165,9 @@ namespace pacman
                     changeDirection(WishedDirection);
                 }
             }
-            MoveInDirection();
+            moveInDirection();
         }
-        public void MoveInDirection()
+        private void moveInDirection()
         {
             int newX = x + Direction.Item1;
             int newY = y + Direction.Item2;
@@ -190,23 +192,6 @@ namespace pacman
             WishedDirection = newWished;
         }
 
-        public void TurnRight()
-        {
-            char newDirChar = DirectionGlobal.RightTurn(DirectionChar);
-            Tuple<int, int> newDirection = DirectionGlobal.CharToDirection[newDirChar];
-            gamePlan.ChangeOnPosition(x, y, newDirChar);
-            DirectionChar = newDirChar;
-            Direction = newDirection;
-        }
-        public void TurnLeft()
-        {
-            char newDirChar = DirectionGlobal.LeftTurn(DirectionChar);
-            Tuple<int, int> newDirection = DirectionGlobal.CharToDirection[newDirChar];
-            gamePlan.ChangeOnPosition(x, y, newDirChar);
-            DirectionChar = newDirChar;
-            Direction = newDirection;
-        }
-      
     }
 
     public static class DirectionGlobal
@@ -236,47 +221,6 @@ namespace pacman
             KeyToDirection.Add(Keys.Up, new Tuple<int, int>(0, -1));
             KeyToDirection.Add(Keys.Down, new Tuple<int, int>(0, 1));
             
-        }
-
-        public static char RightTurn(char directionChar)
-        {
-            switch (directionChar)
-            {
-                case '>':
-                    return 'v';
-                    break;
-                case 'v':
-                    return '<';
-                    break;
-                case '<':
-                    return '^';
-                    break;
-                case '^':
-                    return '>';
-                    break;
-                default:
-                    return directionChar;
-            }
-        }
-        public static char LeftTurn(char directionChar)
-        {
-            switch (directionChar)
-            {
-                case '>':
-                    return '^';
-                    break;
-                case '^':
-                    return '<';
-                    break;
-                case '<':
-                    return 'v';
-                    break;
-                case 'v':
-                    return '>';
-                    break;
-                default:
-                    return directionChar;
-            }
         }
     }
 }

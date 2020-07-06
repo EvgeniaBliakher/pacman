@@ -9,6 +9,7 @@ namespace pacman
     public static class Global
     {
         public static int PICTURESIZE = 24;
+        public static int DOTPOINTS = 50;
         
         public static char WALL = 'X';
         public static char FLOOR = ' ';
@@ -68,7 +69,7 @@ namespace pacman
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             
-            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map.txt");   
+            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map.txt", Global.DOTPOINTS);   
             //ToDo: Change to relative path
             gameMode = GameMode.Start;
             
