@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -44,14 +45,22 @@ namespace pacman
         public static Rectangle up = new Rectangle(144,0,24,24);
         public static Rectangle down = new Rectangle(168,0,24,24);
     }
+
+    public enum GameMode
+    {
+        Start,
+        Play
+    }
     
     public class Game1 : Game
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private Texture2D texture;
+        private Texture2D startTexture;
 
         private GamePlan gamePlan;
+        private GameMode gameMode;
 
         public Game1()
         {
@@ -61,6 +70,9 @@ namespace pacman
             
             gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map.txt");   
             //ToDo: Change to relative path
+            gameMode = GameMode.Start;
+            
+            this.TargetElapsedTime = new TimeSpan(0,0,0,0,120);
         }
 
         protected override void Initialize()
@@ -77,12 +89,27 @@ namespace pacman
             // TODO: use this.Content to load your game content here
             
             texture = this.Content.Load<Texture2D>("all_icons");
+            startTexture = this.Content.Load<Texture2D>("press_key");
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-                Keyboard.GetState().IsKeyDown(Keys.Escape))
+            KeyboardState state = Keyboard.GetState();
+
+            switch (gameMode)
+            {
+                case GameMode.Start:
+                    if (state.GetPressedKeys().Length > 0)
+                    {
+                        gameMode = GameMode.Play;
+                    }
+                    break;
+                case GameMode.Play:
+                    gamePlan.pacman.MoveInDirection();
+                    break;
+            }
+            
+            if (state.IsKeyDown(Keys.Escape))
                 Exit();
 
             // TODO: Add your update logic here
@@ -92,28 +119,37 @@ namespace pacman
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
-
-            // TODO: Add your drawing code here
-            _spriteBatch.Begin(); 
+            GraphicsDevice.Clear(Color.Black);
+            switch (gameMode)
+            {
+                case GameMode.Start:
+                    _spriteBatch.Begin();
+                    _spriteBatch.Draw(startTexture, Vector2.Zero, Color.White);
+                    _spriteBatch.End();
+                    break;
+                
+                case GameMode.Play:
+                    _spriteBatch.Begin(); 
             
-            int offsetX = 0; 
-            int offsetY = 0; 
-            for (int x = 0; x < gamePlan.width; x++)
-           {
-               for (int y = 0; y < gamePlan.height; y++)
-               {
-                   char mapChar = gamePlan.map[x, y];
-                   Rectangle source = Global.ItemToSourceRectangle[mapChar];
-                   _spriteBatch.Draw(texture, new Vector2(offsetX, offsetY), sourceRectangle: source, Color.White);
-                   offsetY += Global.PICTURESIZE;
-               }
+                    int offsetX = 0; 
+                    int offsetY = 0; 
+                    for (int x = 0; x < gamePlan.width; x++)
+                    {
+                        for (int y = 0; y < gamePlan.height; y++)
+                        {
+                            char mapChar = gamePlan.map[x, y];
+                            Rectangle source = Global.ItemToSourceRectangle[mapChar];
+                            _spriteBatch.Draw(texture, new Vector2(offsetX, offsetY), sourceRectangle: source, Color.White);
+                            offsetY += Global.PICTURESIZE;
+                        }
 
-               offsetY = 0;
-               offsetX += Global.PICTURESIZE;
-           }
+                        offsetY = 0;
+                        offsetX += Global.PICTURESIZE;
+                    }
            
-            _spriteBatch.End();
+                    _spriteBatch.End();
+                    break;
+            }
 
             base.Draw(gameTime);
         }
