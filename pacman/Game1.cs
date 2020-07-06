@@ -72,7 +72,7 @@ namespace pacman
             //ToDo: Change to relative path
             gameMode = GameMode.Start;
             
-            this.TargetElapsedTime = new TimeSpan(0,0,0,0,120);
+            this.TargetElapsedTime = new TimeSpan(0,0,0,0,180);
         }
 
         protected override void Initialize()
@@ -105,7 +105,32 @@ namespace pacman
                     }
                     break;
                 case GameMode.Play:
-                    gamePlan.pacman.MoveInDirection();
+                    var pressed = state.GetPressedKeys();
+                    if (pressed.Length == 1)
+                    {
+                        Tuple<int, int> wished;
+                        switch (pressed[0])
+                        {
+                            case Keys.Right: 
+                                wished = DirectionGlobal.KeyToDirection[Keys.Right];
+                                break;
+                            case Keys.Left:
+                                wished = DirectionGlobal.KeyToDirection[Keys.Left];
+                                break;
+                            case Keys.Up:
+                                wished = DirectionGlobal.KeyToDirection[Keys.Up];
+                                break;
+                            case Keys.Down:
+                                wished = DirectionGlobal.KeyToDirection[Keys.Down];
+                                break;
+                            default:
+                                wished = gamePlan.pacman.Direction;
+                                break;
+                        }
+                        gamePlan.pacman.ChangeWishedDirection(wished);
+
+                    }
+                    gamePlan.pacman.Move();
                     break;
             }
             
@@ -129,29 +154,32 @@ namespace pacman
                     break;
                 
                 case GameMode.Play:
-                    _spriteBatch.Begin(); 
-            
-                    int offsetX = 0; 
-                    int offsetY = 0; 
-                    for (int x = 0; x < gamePlan.width; x++)
-                    {
-                        for (int y = 0; y < gamePlan.height; y++)
-                        {
-                            char mapChar = gamePlan.map[x, y];
-                            Rectangle source = Global.ItemToSourceRectangle[mapChar];
-                            _spriteBatch.Draw(texture, new Vector2(offsetX, offsetY), sourceRectangle: source, Color.White);
-                            offsetY += Global.PICTURESIZE;
-                        }
-
-                        offsetY = 0;
-                        offsetX += Global.PICTURESIZE;
-                    }
-           
-                    _spriteBatch.End();
+                    drawGameplan();
                     break;
             }
 
             base.Draw(gameTime);
+        }
+
+        private void drawGameplan()
+        {
+            _spriteBatch.Begin(); 
+            
+            int offsetX = 0; 
+            int offsetY = 0; 
+            for (int x = 0; x < gamePlan.width; x++)
+            {
+                for (int y = 0; y < gamePlan.height; y++)
+                {
+                    char mapChar = gamePlan.map[x, y];
+                    Rectangle source = Global.ItemToSourceRectangle[mapChar];
+                    _spriteBatch.Draw(texture, new Vector2(offsetX, offsetY), sourceRectangle: source, Color.White);
+                    offsetY += Global.PICTURESIZE;
+                }
+                offsetY = 0;
+                offsetX += Global.PICTURESIZE;
+            }
+            _spriteBatch.End();
         }
     }
 

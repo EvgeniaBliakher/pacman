@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Xna.Framework.Input;
 
 namespace pacman
 {
@@ -63,6 +64,15 @@ namespace pacman
             }
             return false;
         }
+        public bool IsFreeOrDot(int x, int y)
+        {
+            char mapChar = map[x, y];
+            if (mapChar == Global.FLOOR || mapChar == Global.DOT || mapChar == Global.BIGDOT)
+            {
+                return true;
+            }
+            return false;
+        }
 
         public void Move(int fromX, int fromY, int toX, int toY)
         {
@@ -108,18 +118,13 @@ namespace pacman
         {
         }
     }
-
-    public enum PacmanState
-    {
-        Run,
-        Chase
-    }
+    
 
     public class Pacman : Item
     {
         public Tuple<int, int>  Direction; // direction in x and y, one of them always zero - no diagonal movement
         public char DirectionChar;
-        public PacmanState State;
+        public Tuple<int, int> WishedDirection;
 
         public Pacman(int x, int y, GamePlan gamePlan, char directionChar) : base(x, y, gamePlan)
         {
@@ -143,19 +148,46 @@ namespace pacman
                     break;
             }
 
-            this.State = PacmanState.Run;
+            this.WishedDirection = Direction;
+            // this.WishedDirection = DirectionGlobal.CharToDirection['^'];
         }
-
+        
+        public void Move()
+        {
+            if (!Direction.Equals(WishedDirection))
+            {
+                int xInDir = x + WishedDirection.Item1;
+                int yInDir = y + WishedDirection.Item2;
+                if (gamePlan.IsFreeOrDot(xInDir, yInDir))
+                {
+                    changeDirection(WishedDirection);
+                }
+            }
+            MoveInDirection();
+        }
         public void MoveInDirection()
         {
             int newX = x + Direction.Item1;
             int newY = y + Direction.Item2;
-            if (gamePlan.IsFree(newX, newY))
+            if (gamePlan.IsFreeOrDot(newX, newY))
             {
                 gamePlan.Move(x, y, newX, newY);
                 x = newX;
                 y = newY;
             }
+        }
+
+        private void changeDirection(Tuple<int, int> newDirection)
+        {
+            Direction = newDirection;
+            char newDirectionChar = DirectionGlobal.DirectionToChar[newDirection];
+            DirectionChar = newDirectionChar;
+            gamePlan.ChangeOnPosition(x, y, DirectionChar);
+        }
+
+        public void ChangeWishedDirection(Tuple<int, int> newWished)
+        {
+            WishedDirection = newWished;
         }
 
         public void TurnRight()
@@ -180,6 +212,9 @@ namespace pacman
     public static class DirectionGlobal
     {
         public static Dictionary<char, Tuple<int, int>> CharToDirection;
+        public static Dictionary<Tuple<int, int>, char> DirectionToChar;
+
+        public static Dictionary<Keys, Tuple<int, int>> KeyToDirection;
 
         static DirectionGlobal()
         {
@@ -188,6 +223,19 @@ namespace pacman
             CharToDirection.Add('<', new Tuple<int, int>(-1, 0));
             CharToDirection.Add('^', new Tuple<int, int>(0, -1));
             CharToDirection.Add('v', new Tuple<int, int>(0, 1));
+            
+            DirectionToChar = new Dictionary<Tuple<int, int>, char>();
+            DirectionToChar.Add(new Tuple<int, int>(1, 0), '>');
+            DirectionToChar.Add(new Tuple<int, int>(-1, 0), '<');
+            DirectionToChar.Add(new Tuple<int, int>(0, -1), '^');
+            DirectionToChar.Add(new Tuple<int, int>(0, 1), 'v');
+            
+            KeyToDirection = new Dictionary<Keys, Tuple<int, int>>();
+            KeyToDirection.Add(Keys.Right, new Tuple<int, int>(1, 0));
+            KeyToDirection.Add(Keys.Left, new Tuple<int, int>(-1, 0));
+            KeyToDirection.Add(Keys.Up, new Tuple<int, int>(0, -1));
+            KeyToDirection.Add(Keys.Down, new Tuple<int, int>(0, 1));
+            
         }
 
         public static char RightTurn(char directionChar)
