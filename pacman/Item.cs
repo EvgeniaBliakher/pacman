@@ -11,13 +11,19 @@ namespace pacman
         public int height;
         public int width;
         public Pacman pacman;
+
         public int dotPoints;
+        public int curPoints;
+        public int dotsLeft;
+        public int livesLeft;
         
 
         public GamePlan(string pathToMap, int dotPoints)
         {
             readMapFromFile(pathToMap);
             this.dotPoints = dotPoints;
+            this.curPoints = 0;
+            livesLeft = 3;
         }
 
         private void readMapFromFile(string pathToFile)
@@ -42,14 +48,17 @@ namespace pacman
                         case 'v':
                             pacman = new Pacman(x, y, this, mapChar);
                             break;
+                        case 'd':
+                        case 'D':
+                            dotsLeft++;
+                            break;
                     }
                 }
             }
         }
 
-        public bool IsFree(int x, int y)
+        public bool IsFree(char mapChar)
         {
-            char mapChar = map[x, y];
             if (mapChar == Global.FLOOR)
             {
                 return true;
@@ -57,23 +66,36 @@ namespace pacman
             return false;
         }
 
-        public bool IsDot(int x, int y)
+        public bool IsDot(char mapChar)
         {
-            char mapChar = map[x, y];
             if (mapChar == Global.DOT || mapChar == Global.BIGDOT)
             {
                 return true;
             }
             return false;
         }
-        public bool IsFreeOrDot(int x, int y)
+
+        public bool IsBigDot(char mapChar)
         {
-            char mapChar = map[x, y];
+            if (mapChar == Global.BIGDOT)
+            {
+                return true;
+            }
+            return false;
+        }
+        public bool IsFreeOrDot(char mapChar)
+        {
             if (mapChar == Global.FLOOR || mapChar == Global.DOT || mapChar == Global.BIGDOT)
             {
                 return true;
             }
             return false;
+        }
+
+        public char what_is_on_position(int x, int y)
+        {
+            char mapChar = map[x, y];
+            return mapChar;
         }
 
         public void Move(int fromX, int fromY, int toX, int toY)
@@ -103,24 +125,6 @@ namespace pacman
             this.gamePlan = gamePlan;
         }
     }
-
-    public class Dot : Item
-    {
-        public int points_worth;
-
-        public Dot(int x, int y, GamePlan gamePlan, int pointsWorth) : base(x, y, gamePlan)
-        {
-            points_worth = pointsWorth;
-        }
-    }
-
-    public class BigDot : Dot
-    { 
-        public BigDot(int x, int y, GamePlan gamePlan, int pointsWorth) : base(x, y, gamePlan, pointsWorth)
-        {
-        }
-    }
-    
 
     public class Pacman : Item
     {
@@ -160,7 +164,8 @@ namespace pacman
             {
                 int xInDir = x + WishedDirection.Item1;
                 int yInDir = y + WishedDirection.Item2;
-                if (gamePlan.IsFreeOrDot(xInDir, yInDir))
+                char mapChar = gamePlan.what_is_on_position(xInDir, yInDir);
+                if (gamePlan.IsFreeOrDot(mapChar))
                 {
                     changeDirection(WishedDirection);
                 }
@@ -171,14 +176,30 @@ namespace pacman
         {
             int newX = x + Direction.Item1;
             int newY = y + Direction.Item2;
-            if (gamePlan.IsFreeOrDot(newX, newY))
+            char mapChar = gamePlan.what_is_on_position(newX, newY);
+            if (gamePlan.IsFreeOrDot(mapChar))
             {
                 gamePlan.Move(x, y, newX, newY);
                 x = newX;
                 y = newY;
+                if (gamePlan.IsDot(mapChar))
+                {
+                    eat_dot(mapChar);
+                }
             }
         }
 
+        private void eat_dot(char dotChar)
+        {
+            gamePlan.curPoints += gamePlan.dotPoints;
+            gamePlan.dotsLeft--;
+            Console.WriteLine("cur points: " + gamePlan.curPoints);
+            if (gamePlan.IsBigDot(dotChar))
+            {
+                // ToDo: pacman can eat the ghosts
+            }
+        }
+        
         private void changeDirection(Tuple<int, int> newDirection)
         {
             Direction = newDirection;
@@ -194,6 +215,8 @@ namespace pacman
 
     }
 
+    
+    
     public static class DirectionGlobal
     {
         public static Dictionary<char, Tuple<int, int>> CharToDirection;
