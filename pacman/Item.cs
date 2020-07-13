@@ -19,8 +19,10 @@ namespace pacman
         public int dotPoints;
         public int curPoints;
         public int dotsLeft;
+        public int dotsEaten;
         public int livesLeft;
-        
+
+        public int[] door;  
 
         public GamePlan(string pathToMap, int dotPoints, int[] redStart, int[] redHome, int[] pinkStart, int[] pinkHome,
             int[] blueStart, int[] blueHome, int[] yellowStart, int[] yellowHome)
@@ -28,11 +30,14 @@ namespace pacman
             readMapFromFile(pathToMap);
             this.dotPoints = dotPoints;
             this.curPoints = 0;
+            dotsEaten = 0;
             livesLeft = 3;
             RedGhost red = new RedGhost(redStart[0], redStart[1], this, GhostMode.Chase, redHome[0], redHome[1]);
-            PinkGhost pink = new PinkGhost(pinkStart[0], pinkStart[1], this, GhostMode.Chase, pinkHome[0], pinkHome[1]);
+            PinkGhost pink = new PinkGhost(pinkStart[0], pinkStart[1], this, GhostMode.Wait, pinkHome[0], pinkHome[1]);
+            
+            YellowGhost yellow = new YellowGhost(yellowStart[0], yellowStart[1], this, GhostMode.Wait, yellowHome[0], yellowHome[1]);
 
-            ghosts = new Ghost[] {red, pink};
+            ghosts = new Ghost[] {red, pink, yellow};
         }
 
         private void readMapFromFile(string pathToFile)
@@ -60,6 +65,12 @@ namespace pacman
                         case 'd':
                         case 'D':
                             dotsLeft++;
+                            break;
+                        case '-':
+                            door = new int[2];
+                            door[0] = x;
+                            door[1] = y;
+                            map[x, y] = Global.FLOOR;
                             break;
                     }
                 }
@@ -222,6 +233,7 @@ namespace pacman
         {
             gamePlan.curPoints += gamePlan.dotPoints;
             gamePlan.dotsLeft--;
+            gamePlan.dotsEaten++;
             Console.WriteLine("cur points: " + gamePlan.curPoints);
             if (gamePlan.IsBigDot(dotChar))
             {
@@ -254,12 +266,14 @@ namespace pacman
     public abstract class Ghost : Item
     {
         public GhostMode mode;
+        public Tuple<int, int> direction;
         public int homeTileX;
         public int homeTileY;
 
         public TimeSpan modeLastChanged;
         public const int chaseTimeSec = 20;
         public const int scatterTimeSec = 7;
+        public int dotsEatenToStart;
         
         public Ghost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan)
         {
@@ -267,6 +281,7 @@ namespace pacman
             this.homeTileX = homeTileX;
             this.homeTileY = homeTileY;
             this.modeLastChanged = TimeSpan.FromSeconds(0);
+            this.direction = new Tuple<int, int>(0, 0);
         }
         public abstract void Chase();
         
@@ -274,6 +289,9 @@ namespace pacman
         {
             switch (mode)
             {
+                case GhostMode.Wait:
+                    Wait(timeNow);
+                    break;
                 case GhostMode.Chase:
                     if (CheckTime(timeNow, modeLastChanged, chaseTimeSec))
                     {
@@ -305,26 +323,56 @@ namespace pacman
         
         public void ChaseTarget(int targetX, int targetY)
         {
-            /*int targetX = gamePlan.pacman.x;
-            int targetY = gamePlan.pacman.y;*/
             List<int[]> posibleMoves = gamePlan.FindFreeNeighbors(x, y);
             int smallestDistance = Int32.MaxValue;
-            int[] bestMove = new []{23, 23};     // ToDo: ??? 
+            int[] bestMove = new []{0, 0};     // ToDo: ??? 
+            Tuple<int, int> finalDir = new Tuple<int, int>(0, 0);
+            if (posibleMoves.Count == 1)    // if ghost meets a dead end it can turn 180 degrees
+            {
+                bestMove = posibleMoves[0];
+            }
             foreach (var tile in posibleMoves)
             {
                 int distance = gamePlan.CountDistance(tile[0], tile[1], targetX, targetY);
-                if (distance < smallestDistance)
+                Tuple<int, int> potentialDir = new Tuple<int, int>(tile[0] - x, tile[1] - y);
+                if (distance < smallestDistance && !IsOppositeDirection(potentialDir))
                 {
                     smallestDistance = distance;
                     bestMove = tile;
+                    finalDir = potentialDir;
                 }
             }
-            changeCoordinates(bestMove[0], bestMove[1]);
+            changeCoordinates(bestMove[0], bestMove[1], finalDir);
         }
-        private void changeCoordinates(int newX, int newY)
+
+        public void GoToDoor(TimeSpan timeNow)
+        {
+            int targetX = gamePlan.door[0];
+            int targetY = gamePlan.door[1] - 1;    // one tile above the door
+            if (x != targetX || y != targetY)
+            {
+                ChaseTarget(targetX, targetY);
+            }
+            else
+            {
+                changeMode(GhostMode.Chase, timeNow);
+            }
+        }
+
+        public void Wait(TimeSpan timeNow)
+        {
+            if (gamePlan.dotsEaten >= dotsEatenToStart)
+            {
+                GoToDoor(timeNow);
+            }
+            else { /* wait */ }
+        }
+            
+        private void changeCoordinates(int newX, int newY, Tuple<int, int> newDir)
         {
             x = newX;
             y = newY;
+            direction = newDir;
         }
         public bool CheckTime(TimeSpan timeNow, TimeSpan lastTime, int period)
         {
@@ -340,12 +388,22 @@ namespace pacman
             mode = newMode;
             modeLastChanged = timeNow;
         }
+
+        public bool IsOppositeDirection(Tuple<int, int> newDir)
+        {
+            if (newDir.Item1 == direction.Item1 * -1 && newDir.Item2 == direction.Item2 * -1)
+            {
+                return true;
+            }
+            return false;
+        }
     }
 
     public class RedGhost : Ghost
     {
         public RedGhost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan, mode, homeTileX, homeTileY)
         {
+            dotsEatenToStart = 0;
         }
 
         public override void Chase()
@@ -361,6 +419,7 @@ namespace pacman
     {
         public PinkGhost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan, mode, homeTileX, homeTileY)
         {
+            dotsEatenToStart = 0;
         }
 
         public override void Chase()
@@ -372,7 +431,30 @@ namespace pacman
             ChaseTarget(targetX, targetY);
         }
     }
-    
+
+    public class YellowGhost : Ghost
+    {
+        public const int minDistToPacman = 10;
+        public YellowGhost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan, mode, homeTileX, homeTileY)
+        {
+            dotsEatenToStart = 30;
+        }
+
+        public override void Chase()
+        {
+            int pacmanX = gamePlan.pacman.x;
+            int pacmanY = gamePlan.pacman.y;
+            int pacmanDistance = gamePlan.CountDistance(pacmanX, pacmanY, x, y);
+            if (pacmanDistance >= minDistToPacman)
+            {
+                ChaseTarget(pacmanX, pacmanY);
+            }
+            else
+            {
+                Scatter();
+            }
+        }
+    }
     public static class DirectionGlobal
     {
         public static Dictionary<char, Tuple<int, int>> CharToDirection;

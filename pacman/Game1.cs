@@ -10,7 +10,7 @@ namespace pacman
     {
         public static int PICTURESIZE = 24;
         public static int DOTPOINTS = 10;
-        public const int GHOSTCOUNT = 2;
+        public const int GHOSTCOUNT = 3;
         
         public static char WALL = 'X';
         public static char FLOOR = ' ';
@@ -20,6 +20,7 @@ namespace pacman
         public static char LEFT = '<';
         public static char UP = '^';
         public static char DOWN = 'v';
+        public static char DOOR = '-';
         
         public static Dictionary<char, Rectangle> ItemToSourceRectangle;
         public static Dictionary<int, Rectangle> GhostIdxToSourceRectangle;
@@ -104,10 +105,10 @@ namespace pacman
             IsMouseVisible = true;
             
             gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt", Global.DOTPOINTS, 
-                new int[] {12, 8}, new int[] {0,0},
-                new []{12, 10}, new []{24, 0},
+                new int[] {12, 8}, new int[] {0, 0},
+                new []{10, 10}, new []{24, 0},
                 new []{11, 10}, new []{0, 22},
-                new []{11, 14}, new []{24, 22});   
+                new []{14, 11}, new []{24, 22});   
             //ToDo: Change to relative path
             gameMode = GameMode.Start;
             
@@ -127,7 +128,7 @@ namespace pacman
 
             // TODO: use this.Content to load your game content here
             
-            startTexture = this.Content.Load<Texture2D>("press_key");
+            startTexture = this.Content.Load<Texture2D>("start_frame");
             iconsTexture = this.Content.Load<Texture2D>("all_icons_final");
             textTexture = this.Content.Load<Texture2D>("letters_numbers");
         }
