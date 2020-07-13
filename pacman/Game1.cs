@@ -10,6 +10,7 @@ namespace pacman
     {
         public static int PICTURESIZE = 24;
         public static int DOTPOINTS = 10;
+        public const int GHOSTCOUNT = 2;
         
         public static char WALL = 'X';
         public static char FLOOR = ' ';
@@ -21,6 +22,7 @@ namespace pacman
         public static char DOWN = 'v';
         
         public static Dictionary<char, Rectangle> ItemToSourceRectangle;
+        public static Dictionary<int, Rectangle> GhostIdxToSourceRectangle;
         static Global()
         {
             ItemToSourceRectangle = new Dictionary<char, Rectangle>();
@@ -32,6 +34,12 @@ namespace pacman
             ItemToSourceRectangle.Add(LEFT, SourceRectangle.left);
             ItemToSourceRectangle.Add(UP, SourceRectangle.up);
             ItemToSourceRectangle.Add(DOWN, SourceRectangle.down);
+            
+            GhostIdxToSourceRectangle = new Dictionary<int, Rectangle>();
+            GhostIdxToSourceRectangle.Add(0, SourceRectangle.red);
+            GhostIdxToSourceRectangle.Add(1, SourceRectangle.pink);
+            GhostIdxToSourceRectangle.Add(2, SourceRectangle.blue);
+            GhostIdxToSourceRectangle.Add(3, SourceRectangle.yellow);
         }
     }
     
@@ -46,6 +54,11 @@ namespace pacman
         public static Rectangle up = new Rectangle(144,0,24,24);
         public static Rectangle down = new Rectangle(168,0,24,24);
         
+        public static Rectangle red = new Rectangle(192, 0, 24, 24);
+        public static Rectangle pink = new Rectangle(216, 0, 24, 24);
+        public static Rectangle blue = new Rectangle(240, 0, 24, 24);
+        public static Rectangle yellow = new Rectangle(264, 0, 24, 24);
+
         public static Rectangle score = new Rectangle(0, 0, 120, 24);
         public static Rectangle lives = new Rectangle(120, 0, 120, 24);
 
@@ -64,7 +77,9 @@ namespace pacman
     public enum GameMode
     {
         Start,
-        Play
+        Play,
+        Win,
+        Lose
     }
     
     public class Game1 : Game
@@ -88,7 +103,11 @@ namespace pacman
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             
-            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt", Global.DOTPOINTS);   
+            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt", Global.DOTPOINTS, 
+                new int[] {12, 8}, new int[] {0,0},
+                new []{12, 10}, new []{24, 0},
+                new []{11, 10}, new []{0, 22},
+                new []{11, 14}, new []{24, 22});   
             //ToDo: Change to relative path
             gameMode = GameMode.Start;
             
@@ -109,7 +128,7 @@ namespace pacman
             // TODO: use this.Content to load your game content here
             
             startTexture = this.Content.Load<Texture2D>("press_key");
-            iconsTexture = this.Content.Load<Texture2D>("all_icons");
+            iconsTexture = this.Content.Load<Texture2D>("all_icons_final");
             textTexture = this.Content.Load<Texture2D>("letters_numbers");
         }
 
@@ -126,41 +145,65 @@ namespace pacman
                     }
                     break;
                 case GameMode.Play:
-                    var pressed = state.GetPressedKeys();
-                    if (pressed.Length == 1)
+                    if (gamePlan.dotsLeft == 0 && gamePlan.livesLeft != 0)
                     {
-                        Tuple<int, int> wished;
-                        switch (pressed[0])
-                        {
-                            case Keys.Right: 
-                                wished = DirectionGlobal.KeyToDirection[Keys.Right];
-                                break;
-                            case Keys.Left:
-                                wished = DirectionGlobal.KeyToDirection[Keys.Left];
-                                break;
-                            case Keys.Up:
-                                wished = DirectionGlobal.KeyToDirection[Keys.Up];
-                                break;
-                            case Keys.Down:
-                                wished = DirectionGlobal.KeyToDirection[Keys.Down];
-                                break;
-                            default:
-                                wished = gamePlan.pacman.Direction;
-                                break;
-                        }
-                        gamePlan.pacman.ChangeWishedDirection(wished);
-
+                        gameMode = GameMode.Win;
                     }
-                    gamePlan.pacman.Move();
+                    else if (gamePlan.livesLeft == 0)
+                    {
+                        gameMode = GameMode.Lose;
+                    }
+                    else
+                    {
+                        var pressed = state.GetPressedKeys();
+                        if (pressed.Length == 1)
+                        {
+                            Tuple<int, int> wished;
+                            switch (pressed[0])
+                            {
+                                case Keys.Right: 
+                                    wished = DirectionGlobal.KeyToDirection[Keys.Right];
+                                    break;
+                                case Keys.Left:
+                                    wished = DirectionGlobal.KeyToDirection[Keys.Left];
+                                    break;
+                                case Keys.Up:
+                                    wished = DirectionGlobal.KeyToDirection[Keys.Up];
+                                    break;
+                                case Keys.Down:
+                                    wished = DirectionGlobal.KeyToDirection[Keys.Down];
+                                    break;
+                                default:
+                                    wished = gamePlan.pacman.Direction;
+                                    break;
+                            }
+                            gamePlan.pacman.ChangeWishedDirection(wished);
+
+                        }
+                        gamePlan.pacman.Move();
+                        MoveGhosts(gameTime.TotalGameTime);
+                    }
                     break;
+                case GameMode.Win:
+                    break;
+                
+                case GameMode.Lose:
+                    break;
+                    
             }
             
             if (state.IsKeyDown(Keys.Escape))
                 Exit();
-
-            // TODO: Add your update logic here
-
+            
             base.Update(gameTime);
+        }
+
+        public void MoveGhosts(TimeSpan timeNow)
+        {
+            foreach (var ghost in gamePlan.ghosts)
+            {
+                ghost.Move(timeNow);
+            }
         }
 
         protected override void Draw(GameTime gameTime)
@@ -186,10 +229,10 @@ namespace pacman
         private void drawGameplan()
         {
             _spriteBatch.Begin(); 
-            
+            // draw gameplan
             int offsetX = 0; 
             int offsetY = 0; 
-            for (int x = 0; x < gamePlan.width; x++)
+            for (int x = 0; x < gamePlan.width; x++)   
             {
                 for (int y = 0; y < gamePlan.height; y++)
                 {
@@ -201,7 +244,7 @@ namespace pacman
                 offsetY = 0;
                 offsetX += Global.PICTURESIZE;
             }
-
+            // draw icons for lives left
             int lives = gamePlan.livesLeft;
             Rectangle pacman = Global.ItemToSourceRectangle[Global.LEFT];
             int livesX = 7 * Global.PICTURESIZE;
@@ -211,6 +254,15 @@ namespace pacman
                 _spriteBatch.Draw(iconsTexture, new Vector2(livesX, livesY), pacman, Color.White );
                 livesX += Global.PICTURESIZE;
             }
+            // draw ghosts
+            for (int i = 0; i < Global.GHOSTCOUNT; i++)
+            {
+                int ghostX = gamePlan.ghosts[i].x * Global.PICTURESIZE;
+                int ghostY = gamePlan.ghosts[i].y * Global.PICTURESIZE;
+                Rectangle ghostRect = Global.GhostIdxToSourceRectangle[i];
+                _spriteBatch.Draw(iconsTexture, new Vector2(ghostX, ghostY), ghostRect, Color.White );
+            }
+
             _spriteBatch.End();
         }
 

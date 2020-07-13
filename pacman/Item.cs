@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
 namespace pacman
@@ -11,6 +14,7 @@ namespace pacman
         public int height;
         public int width;
         public Pacman pacman;
+        public Ghost[] ghosts;
 
         public int dotPoints;
         public int curPoints;
@@ -18,12 +22,17 @@ namespace pacman
         public int livesLeft;
         
 
-        public GamePlan(string pathToMap, int dotPoints)
+        public GamePlan(string pathToMap, int dotPoints, int[] redStart, int[] redHome, int[] pinkStart, int[] pinkHome,
+            int[] blueStart, int[] blueHome, int[] yellowStart, int[] yellowHome)
         {
             readMapFromFile(pathToMap);
             this.dotPoints = dotPoints;
             this.curPoints = 0;
             livesLeft = 3;
+            RedGhost red = new RedGhost(redStart[0], redStart[1], this, GhostMode.Chase, redHome[0], redHome[1]);
+            PinkGhost pink = new PinkGhost(pinkStart[0], pinkStart[1], this, GhostMode.Chase, pinkHome[0], pinkHome[1]);
+
+            ghosts = new Ghost[] {red, pink};
         }
 
         private void readMapFromFile(string pathToFile)
@@ -109,7 +118,27 @@ namespace pacman
         {
             map[x, y] = newChar;
         }
-        
+
+        public int CountDistance(int x, int y, int a, int b)
+        {
+            return Math.Abs(x - a) + Math.Abs(y - b);
+        }
+
+        public List<int[]> FindFreeNeighbors(int x, int y)
+        {
+            int[][] potentialNeighbors = new[] {new[] {x - 1, y}, new[] {x + 1, y}, new[] {x, y - 1}, new[] {x, y + 1}};
+            List<int[]> result = new List<int[]>();
+            foreach (var neighbor in potentialNeighbors)
+            {
+                char mapChar = map[neighbor[0], neighbor[1]];
+                if (IsFreeOrDot(mapChar))
+                {
+                    result.Add(neighbor);
+                }
+            }
+
+            return result;
+        }
     }
     
     public class Item
@@ -215,7 +244,134 @@ namespace pacman
 
     }
 
-    
+    public enum GhostMode
+    {
+        Wait,
+        Chase,
+        Scatter,
+        Frightened
+    }
+    public abstract class Ghost : Item
+    {
+        public GhostMode mode;
+        public int homeTileX;
+        public int homeTileY;
+
+        public TimeSpan modeLastChanged;
+        public const int chaseTimeSec = 20;
+        public const int scatterTimeSec = 7;
+        
+        public Ghost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan)
+        {
+            this.mode = mode;
+            this.homeTileX = homeTileX;
+            this.homeTileY = homeTileY;
+            this.modeLastChanged = TimeSpan.FromSeconds(0);
+        }
+        public abstract void Chase();
+        
+        public void Move(TimeSpan timeNow)
+        {
+            switch (mode)
+            {
+                case GhostMode.Chase:
+                    if (CheckTime(timeNow, modeLastChanged, chaseTimeSec))
+                    {
+                        changeMode(GhostMode.Scatter, timeNow);
+                    }
+                    else
+                    {
+                        Chase();
+                    }
+                    break;
+                case GhostMode.Scatter:
+                    if (CheckTime(timeNow, modeLastChanged, scatterTimeSec))
+                    {
+                        changeMode(GhostMode.Chase, timeNow);
+                    }
+                    else
+                    {
+                        Scatter();
+                    }
+                    break;
+                case GhostMode.Frightened:
+                    break;
+            }
+        }
+        public void Scatter()
+        {
+            ChaseTarget(homeTileX, homeTileY);
+        }
+        
+        public void ChaseTarget(int targetX, int targetY)
+        {
+            /*int targetX = gamePlan.pacman.x;
+            int targetY = gamePlan.pacman.y;*/
+            List<int[]> posibleMoves = gamePlan.FindFreeNeighbors(x, y);
+            int smallestDistance = Int32.MaxValue;
+            int[] bestMove = new []{23, 23};     // ToDo: ??? 
+            foreach (var tile in posibleMoves)
+            {
+                int distance = gamePlan.CountDistance(tile[0], tile[1], targetX, targetY);
+                if (distance < smallestDistance)
+                {
+                    smallestDistance = distance;
+                    bestMove = tile;
+                }
+            }
+            changeCoordinates(bestMove[0], bestMove[1]);
+        }
+        private void changeCoordinates(int newX, int newY)
+        {
+            x = newX;
+            y = newY;
+        }
+        public bool CheckTime(TimeSpan timeNow, TimeSpan lastTime, int period)
+        {
+            if (timeNow.TotalSeconds > lastTime.TotalSeconds + period)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private void changeMode(GhostMode newMode, TimeSpan timeNow)
+        {
+            mode = newMode;
+            modeLastChanged = timeNow;
+        }
+    }
+
+    public class RedGhost : Ghost
+    {
+        public RedGhost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan, mode, homeTileX, homeTileY)
+        {
+        }
+
+        public override void Chase()
+        {
+            int pacmanX = gamePlan.pacman.x;
+            int pacmanY = gamePlan.pacman.y;
+            ChaseTarget(pacmanX, pacmanY);
+        }
+
+    }
+
+    public class PinkGhost : Ghost
+    {
+        public PinkGhost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan, mode, homeTileX, homeTileY)
+        {
+        }
+
+        public override void Chase()
+        {
+            int pacmanX = gamePlan.pacman.x;
+            int pacmanY = gamePlan.pacman.y;
+            int targetX = pacmanX + gamePlan.pacman.Direction.Item1 * 4;  // 4 tiles before packman in direction of movement
+            int targetY = pacmanY + gamePlan.pacman.Direction.Item2 * 4;
+            ChaseTarget(targetX, targetY);
+        }
+    }
     
     public static class DirectionGlobal
     {
