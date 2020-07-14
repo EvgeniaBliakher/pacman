@@ -22,10 +22,14 @@ namespace pacman
         public static char DOWN = 'v';
         public static char DOOR = '-';
         
+        public static bool ResetToPrepareFlag;
+        
         public static Dictionary<char, Rectangle> ItemToSourceRectangle;
         public static Dictionary<int, Rectangle> GhostIdxToSourceRectangle;
         static Global()
         {
+            ResetToPrepareFlag = false;
+            
             ItemToSourceRectangle = new Dictionary<char, Rectangle>();
             ItemToSourceRectangle.Add(WALL, SourceRectangle.wall);
             ItemToSourceRectangle.Add(FLOOR, SourceRectangle.floor);
@@ -75,9 +79,41 @@ namespace pacman
         }
     }
 
+    public static class CountDown
+    {
+        public static bool countDownStarted;
+        public static TimeSpan digitLastChanged;
+        public static int displayIntervalSec;
+        public static int curDigit;
+
+        static CountDown()
+        {
+            countDownStarted = false;
+            digitLastChanged = TimeSpan.Zero;
+            displayIntervalSec = 1;
+            curDigit = 3;
+        }
+
+        public static void StartCountdown(TimeSpan timeNow)
+        {
+            countDownStarted = true;
+            digitLastChanged = timeNow;
+            curDigit = 3;
+        }
+
+        public static bool ChangeToNextDigit(TimeSpan timeNow)
+        {
+            curDigit--;
+            digitLastChanged = timeNow;
+            return curDigit > 0;
+
+        }
+    }
+
     public enum GameMode
     {
         Start,
+        Prepare,
         Play,
         Win,
         Lose
@@ -125,8 +161,6 @@ namespace pacman
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-
-            // TODO: use this.Content to load your game content here
             
             startTexture = this.Content.Load<Texture2D>("start_frame");
             iconsTexture = this.Content.Load<Texture2D>("all_icons_final");
@@ -142,11 +176,35 @@ namespace pacman
                 case GameMode.Start:
                     if (state.GetPressedKeys().Length > 0)
                     {
-                        gameMode = GameMode.Play;
+                        gameMode = GameMode.Prepare;
+                    }
+                    break;
+                case GameMode.Prepare:
+                    if (!CountDown.countDownStarted)
+                    {
+                        CountDown.StartCountdown(gameTime.TotalGameTime);
+                    }
+
+                    if (CountDown.digitLastChanged.TotalSeconds + CountDown.displayIntervalSec <= gameTime.TotalGameTime.TotalSeconds)
+                    {
+                        if (CountDown.ChangeToNextDigit(gameTime.TotalGameTime))
+                        {
+                            // Display digit
+                        }
+                        else
+                        {
+                            CountDown.countDownStarted = false;
+                            gameMode = GameMode.Play;
+                        }
                     }
                     break;
                 case GameMode.Play:
-                    if (gamePlan.dotsLeft == 0 && gamePlan.livesLeft != 0)
+                    if (Global.ResetToPrepareFlag)
+                    {
+                        gameMode = GameMode.Prepare;
+                        Global.ResetToPrepareFlag = false;
+                    }
+                    else if (gamePlan.dotsLeft == 0 && gamePlan.livesLeft != 0)
                     {
                         gameMode = GameMode.Win;
                     }
@@ -216,6 +274,12 @@ namespace pacman
                     _spriteBatch.Begin();
                     _spriteBatch.Draw(startTexture, Vector2.Zero, Color.White);
                     _spriteBatch.End();
+                    break;
+                
+                case GameMode.Prepare:
+                    drawGameplan();
+                    drawLivesAndScore();
+                    drawCountDown();
                     break;
                 
                 case GameMode.Play:
@@ -292,6 +356,15 @@ namespace pacman
                     points /= 10;
                 }
             }
+            _spriteBatch.End();
+        }
+
+        private void drawCountDown()
+        {
+            _spriteBatch.Begin();
+            int digit = CountDown.curDigit;
+            Rectangle digitRect = SourceRectangle.numberRectangle(digit);
+            _spriteBatch.Draw(textTexture, new Vector2(12 * Global.PICTURESIZE, 13 * Global.PICTURESIZE), digitRect, Color.White );
             _spriteBatch.End();
         }
     }

@@ -3,7 +3,7 @@
 XXXXXXXXXXXXXXXXXXXXXXXXX
 XdddddddddddXdddddddddddX
 XdXXXXdXXXXdXdXXXXdXXXXdX
-XdX  XdX  XdXdX  XdX  XdX
+XDX  XdX  XdXdX  XdX  XDX
 XdXXXXdXXXXdXdXXXXdXXXXdX
 XdddddddddddddddddddddddX
 XdXXXXdXdXXXXXXXdXdXXXXdX
@@ -17,7 +17,7 @@ XXXXXXdX XXXXXXX XdXXXXXX
 XXXXXXdX XXXXXXX XdXXXXXX
 XdddddddddddXdddddddddddX
 XdXXXXdXXXXdXdXXXXdXXXXdX
-XddddXddddd < dddddXddddX
+XDdddXddddd < dddddXdddDX
 XXXXdXdXdXXXXXXXdXdXdXXXX
 XddddddXddddXddddXddddddX
 XdXXXXXXXXXdXdXXXXXXXXXdX

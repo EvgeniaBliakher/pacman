@@ -112,6 +112,15 @@ namespace pacman
             return false;
         }
 
+        public bool IsPacman(char mapChar)
+        {
+            if (mapChar == Global.RIGHT || mapChar == Global.LEFT || mapChar == Global.UP || mapChar == Global.DOWN)
+            {
+                return true;
+            }
+            return false;
+        }
+
         public char what_is_on_position(int x, int y)
         {
             char mapChar = map[x, y];
@@ -142,7 +151,7 @@ namespace pacman
             foreach (var neighbor in potentialNeighbors)
             {
                 char mapChar = map[neighbor[0], neighbor[1]];
-                if (IsFreeOrDot(mapChar))
+                if (IsFreeOrDot(mapChar) || IsPacman(mapChar))
                 {
                     result.Add(neighbor);
                 }
@@ -267,6 +276,9 @@ namespace pacman
     {
         public GhostMode mode;
         public Tuple<int, int> direction;
+        public GhostMode startMode;
+        public int startTileX;
+        public int startTileY;
         public int homeTileX;
         public int homeTileY;
 
@@ -278,6 +290,9 @@ namespace pacman
         public Ghost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan)
         {
             this.mode = mode;
+            this.startMode = mode;
+            this.startTileX = x;
+            this.startTileY = y;
             this.homeTileX = homeTileX;
             this.homeTileY = homeTileY;
             this.modeLastChanged = TimeSpan.FromSeconds(0);
@@ -373,6 +388,27 @@ namespace pacman
             x = newX;
             y = newY;
             direction = newDir;
+            if (newX == gamePlan.pacman.x && newY == gamePlan.pacman.y)
+            {
+                killPacman();
+            }
+        }
+        private void killPacman()
+        {
+            gamePlan.livesLeft--;
+            resetGhosts();
+        }
+
+        private void resetGhosts()
+        {
+            foreach (var ghost in gamePlan.ghosts)
+            {
+                ghost.x = ghost.startTileX;
+                ghost.y = ghost.startTileY;
+                ghost.mode = ghost.startMode;
+            }
+
+            Global.ResetToPrepareFlag = true;
         }
         public bool CheckTime(TimeSpan timeNow, TimeSpan lastTime, int period)
         {
