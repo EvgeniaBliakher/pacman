@@ -15,20 +15,23 @@ namespace pacman
         public int width;
         public Pacman pacman;
         public Ghost[] ghosts;
-
-        public int dotPoints;
+        
         public int curPoints;
         public int dotsLeft;
         public int dotsEaten;
         public int livesLeft;
+        
+        public int dotPoints;
+        public int ghostPoints;
 
         public int[] door;  
 
-        public GamePlan(string pathToMap, int dotPoints, int[] redStart, int[] redHome, int[] pinkStart, int[] pinkHome,
+        public GamePlan(string pathToMap, int dotPoints, int ghostPoints, int[] redStart, int[] redHome, int[] pinkStart, int[] pinkHome,
             int[] blueStart, int[] blueHome, int[] yellowStart, int[] yellowHome)
         {
             readMapFromFile(pathToMap);
             this.dotPoints = dotPoints;
+            this.ghostPoints = ghostPoints;
             this.curPoints = 0;
             dotsEaten = 0;
             livesLeft = 3;
@@ -207,7 +210,7 @@ namespace pacman
             // this.WishedDirection = DirectionGlobal.CharToDirection['^'];
         }
         
-        public void Move()
+        public void Move(TimeSpan timeNow)
         {
             if (!Direction.Equals(WishedDirection))
             {
@@ -219,9 +222,9 @@ namespace pacman
                     changeDirection(WishedDirection);
                 }
             }
-            moveInDirection();
+            moveInDirection(timeNow);
         }
-        private void moveInDirection()
+        private void moveInDirection(TimeSpan timeNow)
         {
             int newX = x + Direction.Item1;
             int newY = y + Direction.Item2;
@@ -233,12 +236,12 @@ namespace pacman
                 y = newY;
                 if (gamePlan.IsDot(mapChar))
                 {
-                    eat_dot(mapChar);
+                    eat_dot(mapChar, timeNow);
                 }
             }
         }
 
-        private void eat_dot(char dotChar)
+        private void eat_dot(char dotChar, TimeSpan timeNow)
         {
             gamePlan.curPoints += gamePlan.dotPoints;
             gamePlan.dotsLeft--;
@@ -247,6 +250,10 @@ namespace pacman
             if (gamePlan.IsBigDot(dotChar))
             {
                 // ToDo: pacman can eat the ghosts
+                foreach (var ghost in gamePlan.ghosts)
+                {
+                    ghost.ChangeMode(GhostMode.Frightened, timeNow);
+                }
             }
         }
         
@@ -285,7 +292,10 @@ namespace pacman
         public TimeSpan modeLastChanged;
         public const int chaseTimeSec = 20;
         public const int scatterTimeSec = 7;
+        public const int frightenedTimeSec = 10;
         public int dotsEatenToStart;
+        
+        Random random = new Random();
         
         public Ghost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan)
         {
@@ -298,7 +308,7 @@ namespace pacman
             this.modeLastChanged = TimeSpan.FromSeconds(0);
             this.direction = new Tuple<int, int>(0, 0);
         }
-        public abstract void Chase();
+        public abstract void Chase(TimeSpan timeNow);
         
         public void Move(TimeSpan timeNow)
         {
@@ -310,33 +320,43 @@ namespace pacman
                 case GhostMode.Chase:
                     if (CheckTime(timeNow, modeLastChanged, chaseTimeSec))
                     {
-                        changeMode(GhostMode.Scatter, timeNow);
+                        ChangeMode(GhostMode.Scatter, timeNow);
                     }
                     else
                     {
-                        Chase();
+                        Chase(timeNow);
                     }
                     break;
                 case GhostMode.Scatter:
                     if (CheckTime(timeNow, modeLastChanged, scatterTimeSec))
                     {
-                        changeMode(GhostMode.Chase, timeNow);
+                        ChangeMode(GhostMode.Chase, timeNow);
                     }
                     else
                     {
-                        Scatter();
+                        Scatter(timeNow);
                     }
                     break;
                 case GhostMode.Frightened:
+                    if (CheckTime(timeNow, modeLastChanged, frightenedTimeSec))
+                    {
+                        ChangeMode(GhostMode.Scatter, timeNow);    //ToDo: change back to mode before frightened
+                    }
+                    else
+                    {
+                        int a = random.Next(0, gamePlan.width);
+                        int b = random.Next(0, gamePlan.height);
+                        ChaseTarget(a, b, timeNow); 
+                    }
                     break;
             }
         }
-        public void Scatter()
+        public void Scatter(TimeSpan timeNow)
         {
-            ChaseTarget(homeTileX, homeTileY);
+            ChaseTarget(homeTileX, homeTileY, timeNow);
         }
         
-        public void ChaseTarget(int targetX, int targetY)
+        public void ChaseTarget(int targetX, int targetY, TimeSpan timeNow)
         {
             List<int[]> posibleMoves = gamePlan.FindFreeNeighbors(x, y);
             int smallestDistance = Int32.MaxValue;
@@ -357,7 +377,7 @@ namespace pacman
                     finalDir = potentialDir;
                 }
             }
-            changeCoordinates(bestMove[0], bestMove[1], finalDir);
+            changeCoordinates(bestMove[0], bestMove[1], finalDir, timeNow);
         }
 
         public void GoToDoor(TimeSpan timeNow)
@@ -366,11 +386,11 @@ namespace pacman
             int targetY = gamePlan.door[1] - 1;    // one tile above the door
             if (x != targetX || y != targetY)
             {
-                ChaseTarget(targetX, targetY);
+                ChaseTarget(targetX, targetY, timeNow);
             }
             else
             {
-                changeMode(GhostMode.Chase, timeNow);
+                ChangeMode(GhostMode.Chase, timeNow);
             }
         }
 
@@ -383,32 +403,63 @@ namespace pacman
             else { /* wait */ }
         }
             
-        private void changeCoordinates(int newX, int newY, Tuple<int, int> newDir)
+        private void changeCoordinates(int newX, int newY, Tuple<int, int> newDir, TimeSpan timeNow)
         {
             x = newX;
             y = newY;
             direction = newDir;
             if (newX == gamePlan.pacman.x && newY == gamePlan.pacman.y)
             {
-                killPacman();
+                resolveGhostAndPacman(timeNow);
             }
         }
-        private void killPacman()
+
+        private void resolveGhostAndPacman(TimeSpan timeNow)
+        {
+            if (mode == GhostMode.Frightened)
+            {
+                killGhost(timeNow);
+            }
+            else
+            {
+                killPacman(timeNow);
+            }
+        }
+        private void killPacman(TimeSpan timeNow)
         {
             gamePlan.livesLeft--;
-            resetGhosts();
+            resetGhosts(timeNow);
         }
 
-        private void resetGhosts()
+        private void killGhost(TimeSpan timeNow)
+        {
+            resetGhost(this, timeNow);
+            ChangeMode(GhostMode.Frightened, timeNow);
+            gamePlan.curPoints += gamePlan.ghostPoints;
+            Console.WriteLine("ghost eaten + " + Global.GHOSTPOINTS);
+        }
+        private void resetGhosts(TimeSpan timeNow)
         {
             foreach (var ghost in gamePlan.ghosts)
             {
-                ghost.x = ghost.startTileX;
-                ghost.y = ghost.startTileY;
-                ghost.mode = ghost.startMode;
+                resetGhost(ghost, timeNow);
             }
-
             Global.ResetToPrepareFlag = true;
+        }
+
+        private void resetGhost(Ghost ghost, TimeSpan timeNow)
+        {
+            ghost.x = ghost.startTileX;
+            ghost.y = ghost.startTileY;
+            ghost.ChangeMode(ghost.startMode, timeNow);
+        }
+
+        public void FrightenGhosts(TimeSpan timeNow)
+        {
+            foreach (var ghost in gamePlan.ghosts)
+            {
+                ghost.ChangeMode(GhostMode.Frightened, timeNow);
+            }
         }
         public bool CheckTime(TimeSpan timeNow, TimeSpan lastTime, int period)
         {
@@ -419,7 +470,7 @@ namespace pacman
             return false;
         }
 
-        private void changeMode(GhostMode newMode, TimeSpan timeNow)
+        public void ChangeMode(GhostMode newMode, TimeSpan timeNow)
         {
             mode = newMode;
             modeLastChanged = timeNow;
@@ -442,11 +493,11 @@ namespace pacman
             dotsEatenToStart = 0;
         }
 
-        public override void Chase()
+        public override void Chase(TimeSpan timeNow)
         {
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
-            ChaseTarget(pacmanX, pacmanY);
+            ChaseTarget(pacmanX, pacmanY, timeNow);
         }
 
     }
@@ -458,13 +509,13 @@ namespace pacman
             dotsEatenToStart = 0;
         }
 
-        public override void Chase()
+        public override void Chase(TimeSpan timeNow)
         {
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
             int targetX = pacmanX + gamePlan.pacman.Direction.Item1 * 4;  // 4 tiles before packman in direction of movement
             int targetY = pacmanY + gamePlan.pacman.Direction.Item2 * 4;
-            ChaseTarget(targetX, targetY);
+            ChaseTarget(targetX, targetY, timeNow);
         }
     }
 
@@ -476,18 +527,18 @@ namespace pacman
             dotsEatenToStart = 30;
         }
 
-        public override void Chase()
+        public override void Chase(TimeSpan timeNow)
         {
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
             int pacmanDistance = gamePlan.CountDistance(pacmanX, pacmanY, x, y);
             if (pacmanDistance >= minDistToPacman)
             {
-                ChaseTarget(pacmanX, pacmanY);
+                ChaseTarget(pacmanX, pacmanY, timeNow);
             }
             else
             {
-                Scatter();
+                Scatter(timeNow);
             }
         }
     }

@@ -10,6 +10,7 @@ namespace pacman
     {
         public static int PICTURESIZE = 24;
         public static int DOTPOINTS = 10;
+        public static int GHOSTPOINTS = 100;
         public const int GHOSTCOUNT = 3;
         
         public static char WALL = 'X';
@@ -63,6 +64,7 @@ namespace pacman
         public static Rectangle pink = new Rectangle(216, 0, 24, 24);
         public static Rectangle blue = new Rectangle(240, 0, 24, 24);
         public static Rectangle yellow = new Rectangle(264, 0, 24, 24);
+        public static Rectangle frightened = new Rectangle(288, 0, 24, 24);
 
         public static Rectangle score = new Rectangle(0, 0, 120, 24);
         public static Rectangle lives = new Rectangle(120, 0, 120, 24);
@@ -140,7 +142,8 @@ namespace pacman
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             
-            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt", Global.DOTPOINTS, 
+            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt", 
+                Global.DOTPOINTS, Global.GHOSTPOINTS,
                 new int[] {12, 8}, new int[] {0, 0},
                 new []{10, 10}, new []{24, 0},
                 new []{11, 10}, new []{0, 22},
@@ -163,7 +166,7 @@ namespace pacman
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             
             startTexture = this.Content.Load<Texture2D>("start_frame");
-            iconsTexture = this.Content.Load<Texture2D>("all_icons_final");
+            iconsTexture = this.Content.Load<Texture2D>("all_icons_0");
             textTexture = this.Content.Load<Texture2D>("letters_numbers");
         }
 
@@ -199,7 +202,7 @@ namespace pacman
                     }
                     break;
                 case GameMode.Play:
-                    if (Global.ResetToPrepareFlag)
+                    if (Global.ResetToPrepareFlag && gamePlan.livesLeft > 0)
                     {
                         gameMode = GameMode.Prepare;
                         Global.ResetToPrepareFlag = false;
@@ -239,7 +242,7 @@ namespace pacman
                             gamePlan.pacman.ChangeWishedDirection(wished);
 
                         }
-                        gamePlan.pacman.Move();
+                        gamePlan.pacman.Move(gameTime.TotalGameTime);
                         MoveGhosts(gameTime.TotalGameTime);
                     }
                     break;
@@ -322,10 +325,18 @@ namespace pacman
             // draw ghosts
             for (int i = 0; i < Global.GHOSTCOUNT; i++)
             {
-                int ghostX = gamePlan.ghosts[i].x * Global.PICTURESIZE;
-                int ghostY = gamePlan.ghosts[i].y * Global.PICTURESIZE;
+                Ghost ghost = gamePlan.ghosts[i];
+                int ghostX = ghost.x * Global.PICTURESIZE;
+                int ghostY = ghost.y * Global.PICTURESIZE;
                 Rectangle ghostRect = Global.GhostIdxToSourceRectangle[i];
-                _spriteBatch.Draw(iconsTexture, new Vector2(ghostX, ghostY), ghostRect, Color.White );
+                if (ghost.mode == GhostMode.Frightened)
+                {
+                    _spriteBatch.Draw(iconsTexture, new Vector2(ghostX, ghostY), SourceRectangle.frightened, Color.White );
+                }
+                else
+                {
+                    _spriteBatch.Draw(iconsTexture, new Vector2(ghostX, ghostY), ghostRect, Color.White );   
+                }
             }
 
             _spriteBatch.End();
