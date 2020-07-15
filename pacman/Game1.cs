@@ -8,9 +8,9 @@ namespace pacman
 {
     public static class Global
     {
-        public static int PICTURESIZE = 24;
-        public static int DOTPOINTS = 10;
-        public static int GHOSTPOINTS = 100;
+        public static int PICTURESIZE = 24;          // size of 1 tile in pixels
+        public static int DOTPOINTS = 10;            // points for 1 dot  
+        public static int GHOSTPOINTS = 100;         // points for eating a ghost
         public const int GHOSTCOUNT = 4;
         public const int MAXLIVES = 3;
 
@@ -28,7 +28,7 @@ namespace pacman
         public static char DOWN = 'v';
         public static char DOOR = '-';
         
-        public static bool ResetToPrepareFlag;
+        public static bool ResetToPrepareFlag;    // when true game should be reset to Prepare mode
         
         // /Users/evgeniagolubeva/RiderProjects/pacman/pacman/
         public const string PATH_TO_MAP_FILE = "map3.txt";
@@ -64,6 +64,9 @@ namespace pacman
     
     public static class SourceRectangle
     {
+        // source rectangles of the objects in a texture - cut out from the whole picture
+        // needed for Draw functions
+        
         public static Rectangle wall = new Rectangle(0,0,24,24);
         public static Rectangle floor = new Rectangle(24,0,24,24);
         public static Rectangle dot = new Rectangle(48,0,24,24);
@@ -96,10 +99,12 @@ namespace pacman
 
     public static class CountDown
     {
-        public static bool countDownStarted;
-        public static TimeSpan digitLastChanged;
-        public static int displayIntervalSec;
-        public static int curDigit;
+        // countdown displayed in Prepare game mode 
+        
+        public static bool countDownStarted;        // if countdown is running
+        public static TimeSpan digitLastChanged;    
+        public static int displayIntervalSec;       // for how long digit is displayed
+        public static int curDigit;                 // current digit displayed
 
         static CountDown()
         {
@@ -118,6 +123,7 @@ namespace pacman
 
         public static bool ChangeToNextDigit(TimeSpan timeNow)
         {
+            // returns false if countdown reaches zero - time to stop countdown
             curDigit--;
             digitLastChanged = timeNow;
             return curDigit > 0;
@@ -127,22 +133,22 @@ namespace pacman
 
     public enum GameMode
     {
-        Start,
-        Prepare,
-        Play,
-        Win,
-        Lose
+        Start,        // start frame displayed, first level loaded
+        Prepare,      // ghosts are reset to start positions, countdown dislayed
+        Play,         // game runs
+        Win,          // win frame with score displayed, player can continue to new level
+        Lose          // lose frame displayed, player can repeat the current level
     }
     
     public class Game1 : Game
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-        private Texture2D startTexture;
-        private Texture2D iconsTexture;
-        private Texture2D textTexture;
-        private Texture2D winTexture;
-        private Texture2D loseTexture;
+        private Texture2D startTexture;        // start frame
+        private Texture2D iconsTexture;        // tiles - game field, pacman, ghosts
+        private Texture2D textTexture;         // text and numbers
+        private Texture2D winTexture;          // win frame
+        private Texture2D loseTexture;         // lose frame
 
         private GamePlan gamePlan;
         private GameMode gameMode;
@@ -169,18 +175,19 @@ namespace pacman
             
             levelData = new LevelData(Global.PATH_TO_DATA_FILE);
             
-            this.TargetElapsedTime = new TimeSpan(0,0,0,0,180);
+            this.TargetElapsedTime = new TimeSpan(0,0,0,0,180); // how often update is called
         }
 
         protected override void Initialize()
         {
-            // TODO: Add your initialization logic here
+            // I don't use initialize
 
             base.Initialize();
         }
 
         protected override void LoadContent()
         {
+            // loads pictures from content folder to textures
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             
             startTexture = this.Content.Load<Texture2D>("start_frame");
@@ -192,12 +199,14 @@ namespace pacman
 
         protected override void Update(GameTime gameTime)
         {
-            KeyboardState state = Keyboard.GetState();
+            // updates the game state according to current game mode
+            
+            KeyboardState keybordState = Keyboard.GetState();
 
             switch (gameMode)
             {
                 case GameMode.Start:
-                    if (state.GetPressedKeys().Length > 0)
+                    if (keybordState.GetPressedKeys().Length > 0)    // waits for any pressed key
                     {
                         levelData.GetNextLevelData();
                         gameMode = GameMode.Prepare;
@@ -208,7 +217,7 @@ namespace pacman
                     {
                         CountDown.StartCountdown(gameTime.TotalGameTime);
                     }
-
+                    // if digit is displayed for the display time, change to next digit
                     if (CountDown.digitLastChanged.TotalSeconds + CountDown.displayIntervalSec <= gameTime.TotalGameTime.TotalSeconds)
                     {
                         if (CountDown.ChangeToNextDigit(gameTime.TotalGameTime))
@@ -217,33 +226,39 @@ namespace pacman
                         }
                         else
                         {
+                            // count down reached zero -> stop countdown
                             CountDown.countDownStarted = false;
                             gameMode = GameMode.Play;
                         }
                     }
                     break;
                 case GameMode.Play:
-                    if (Global.ResetToPrepareFlag && gamePlan.livesLeft > 0)
+                    if (Global.ResetToPrepareFlag && gamePlan.livesLeft > 0)    
                     {
                         gameMode = GameMode.Prepare;
                         Global.ResetToPrepareFlag = false;
                     }
                     else if (gamePlan.dotsLeft == 0 && gamePlan.livesLeft != 0)
                     {
+                        // pacman ate all dots -> victory
                         gameMode = GameMode.Win;
                     }
                     else if (gamePlan.livesLeft == 0)
                     {
+                        // pacman is killed by a ghost - loses the last life
                         gameMode = GameMode.Lose;
                     }
                     else
                     {
-                        var pressed = state.GetPressedKeys();
+                        // game runs
+                        // checks for pressed keys then moves pacman and ghosts
+                        var pressed = keybordState.GetPressedKeys();
                         if (pressed.Length == 1)
                         {
-                            Tuple<int, int> wished;
+                            Tuple<int, int> wished;    // direction player wants pacman to take
                             switch (pressed[0])
                             {
+                                // wished direction asigned according to arrow keys
                                 case Keys.Right: 
                                     wished = DirectionGlobal.KeyToDirection[Keys.Right];
                                     break;
@@ -257,10 +272,10 @@ namespace pacman
                                     wished = DirectionGlobal.KeyToDirection[Keys.Down];
                                     break;
                                 default:
-                                    wished = gamePlan.pacman.Direction;
+                                    wished = gamePlan.pacman.Direction;    // if a wrong key is pressed, direction stayes the same
                                     break;
                             }
-                            gamePlan.pacman.ChangeWishedDirection(wished);
+                            gamePlan.pacman.ChangeWishedDirection(wished);    
 
                         }
                         gamePlan.pacman.Move(gameTime.TotalGameTime);
@@ -268,16 +283,18 @@ namespace pacman
                     }
                     break;
                 case GameMode.Win:
-                    if (state.GetPressedKeys().Length > 0)
+                    if (keybordState.GetPressedKeys().Length > 0)
                     {
+                        // next level data loaded
                         PrepareNextLevel(true, Global.PATH_TO_MAP_FILE, gameTime.TotalGameTime);
                         gameMode = GameMode.Prepare;
                     }
                     break;
                 
                 case GameMode.Lose:
-                    if (state.GetPressedKeys().Length > 0)
+                    if (keybordState.GetPressedKeys().Length > 0)
                     {
+                        // uses level data of the same level
                         PrepareNextLevel(false, Global.PATH_TO_MAP_FILE, gameTime.TotalGameTime);
                         gameMode = GameMode.Prepare;
                     }
@@ -285,7 +302,7 @@ namespace pacman
                     
             }
             
-            if (state.IsKeyDown(Keys.Escape))
+            if (keybordState.IsKeyDown(Keys.Escape))    // exits the game if esc key pressed
                 Exit();
             
             base.Update(gameTime);
@@ -293,6 +310,9 @@ namespace pacman
 
         public void PrepareNextLevel(bool getNextLevel, string pathToMapFile, TimeSpan timeNow)
         {
+            // prepares game plan, resets ghosts to start tiles and modes
+            // getNextLevel   - true -> data of next level loaded
+            //                - false -> continue with same level data
             prepareGamePlan(pathToMapFile);
             if (getNextLevel)
             {
@@ -306,6 +326,8 @@ namespace pacman
         
         private void prepareGamePlan(string pathToMapFile)
         {
+            // sets game plan to initial settings
+            // loads game field from file and sets points and lives
             gamePlan.ReadMapFromFile(pathToMapFile);
             gamePlan.dotsEaten = 0;
             gamePlan.curPoints = 0;
@@ -313,6 +335,7 @@ namespace pacman
         }
         public void MoveGhosts(TimeSpan timeNow)
         {
+            // moves all ghosts for one step
             foreach (var ghost in gamePlan.ghosts)
             {
                 ghost.Move(timeNow);
@@ -321,19 +344,20 @@ namespace pacman
 
         protected override void Draw(GameTime gameTime)
         {
+            // draws game state to screen according to game mode
             GraphicsDevice.Clear(Color.Black);
             switch (gameMode)
             {
                 case GameMode.Start:
                     _spriteBatch.Begin();
-                    _spriteBatch.Draw(startTexture, Vector2.Zero, Color.White);
+                    _spriteBatch.Draw(startTexture, Vector2.Zero, Color.White);    // start frame
                     _spriteBatch.End();
                     break;
                 
                 case GameMode.Prepare:
-                    drawGameplan();
-                    drawLivesAndScore();
-                    drawCountDown();
+                    drawGameplan();        // draws initial state of game field
+                    drawLivesAndScore();    
+                    drawCountDown();        // shows countdown
                     break;
                 
                 case GameMode.Play:
@@ -342,15 +366,15 @@ namespace pacman
                     break;
                 case GameMode.Win:
                     _spriteBatch.Begin();
-                    _spriteBatch.Draw(winTexture, Vector2.Zero, Color.White);
+                    _spriteBatch.Draw(winTexture, Vector2.Zero, Color.White);    // win frame
                     int textLine = 420;
                     int offsetX = 180 + 120 + 5*24;
-                    drawScore(offsetX, textLine);
+                    drawScore(offsetX, textLine);    // draws score in line with the word score on the win frame
                     _spriteBatch.End();
                     break;
                 case GameMode.Lose:
                     _spriteBatch.Begin();
-                    _spriteBatch.Draw(loseTexture, Vector2.Zero, Color.White);
+                    _spriteBatch.Draw(loseTexture, Vector2.Zero, Color.White);    // lose frame
                     _spriteBatch.End();
                     break;
             }
@@ -360,8 +384,10 @@ namespace pacman
 
         private void drawGameplan()
         {
+            // draws using icons texture
             _spriteBatch.Begin(); 
             // draw gameplan
+            // goes through map in game plan and draws each tile
             int offsetX = 0; 
             int offsetY = 0; 
             for (int x = 0; x < gamePlan.width; x++)   
@@ -393,7 +419,7 @@ namespace pacman
                 int ghostX = ghost.x * Global.PICTURESIZE;
                 int ghostY = ghost.y * Global.PICTURESIZE;
                 Rectangle ghostRect = Global.GhostIdxToSourceRectangle[i];
-                if (ghost.mode == GhostMode.Frightened)
+                if (ghost.mode == GhostMode.Frightened)    // in frightened mode frightened ghost icon is used for all ghosts
                 {
                     _spriteBatch.Draw(iconsTexture, new Vector2(ghostX, ghostY), SourceRectangle.frightened, Color.White );
                 }
@@ -408,12 +434,13 @@ namespace pacman
 
         private void drawLivesAndScore()
         {
+            // draws words "lives" and "score", draws score
             _spriteBatch.Begin();
-            int textLine = 24 * Global.PICTURESIZE;
+            int textLine = 24 * Global.PICTURESIZE;    // offset on Y axis of the line with text
             _spriteBatch.Draw(textTexture, new Vector2(1 * Global.PICTURESIZE, textLine), SourceRectangle.lives, Color.White );
             _spriteBatch.Draw(textTexture, new Vector2(13 * Global.PICTURESIZE, textLine), SourceRectangle.score, Color.White);
 
-            if (gamePlan.curPoints == 0)
+            if (gamePlan.curPoints == 0) 
             {
                 Rectangle zero = SourceRectangle.numberRectangle(0);
                 _spriteBatch.Draw(textTexture, new Vector2(19 * Global.PICTURESIZE, textLine),  zero, Color.White);
@@ -429,6 +456,8 @@ namespace pacman
 
         private void drawScore(int offsetX, int textLine)
         {
+            // draws number at a given offset
+            // offset of the LAST digit given
             int points = gamePlan.curPoints;
             while (points > 0)
             {
@@ -442,6 +471,7 @@ namespace pacman
 
         private void drawCountDown()
         {
+            // draw current digit of countdown based on CountDown class
             _spriteBatch.Begin();
             int digit = CountDown.curDigit;
             Rectangle digitRect = SourceRectangle.numberRectangle(digit);

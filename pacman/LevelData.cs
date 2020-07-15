@@ -5,6 +5,8 @@ namespace pacman
 {
     public class LevelData
     {
+        // data about timing of the ghosts in levels
+        
         public int curLevel;
         public int curChaseTimeSec;
         public int curScatterTimeSec;

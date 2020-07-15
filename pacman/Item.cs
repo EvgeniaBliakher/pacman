@@ -10,8 +10,8 @@ namespace pacman
 {
     public class GamePlan
     {
-        public char[,] map;
-        public int height;
+        public char[,] map;    // map representing game field, ghosts not on the map
+        public int height;     // of game field
         public int width;
         public Pacman pacman;
         public Ghost[] ghosts;
@@ -24,11 +24,14 @@ namespace pacman
         public int dotPoints;
         public int ghostPoints;
 
-        public int[] door;  
+        public int[] door;  // coordinates of the door to ghosts' home
 
         public GamePlan(string pathToMap, int dotPoints, int ghostPoints, int[] redStart, int[] redHome, int[] pinkStart, int[] pinkHome,
             int[] blueStart, int[] blueHome, int[] yellowStart, int[] yellowHome)
         {
+            // reads map from file and creates 4 ghosts according to initial data
+            // redStart - coordinates of the red ghost starting tile
+            // redHome - coordinates of the red ghost home - tile where it goes in Scatter mode
             ReadMapFromFile(pathToMap);
             this.dotPoints = dotPoints;
             this.ghostPoints = ghostPoints;
@@ -82,6 +85,7 @@ namespace pacman
 
         public bool IsFree(char mapChar)
         {
+            // mapChar - char in map from game plan
             if (mapChar == Global.FLOOR)
             {
                 return true;
@@ -91,6 +95,7 @@ namespace pacman
 
         public bool IsDot(char mapChar)
         {
+            // mapChar - char in map from game plan
             if (mapChar == Global.DOT || mapChar == Global.BIGDOT)
             {
                 return true;
@@ -100,6 +105,7 @@ namespace pacman
 
         public bool IsBigDot(char mapChar)
         {
+            // mapChar - char in map from game plan
             if (mapChar == Global.BIGDOT)
             {
                 return true;
@@ -108,6 +114,7 @@ namespace pacman
         }
         public bool IsFreeOrDot(char mapChar)
         {
+            // mapChar - char in map from game plan
             if (mapChar == Global.FLOOR || mapChar == Global.DOT || mapChar == Global.BIGDOT)
             {
                 return true;
@@ -117,6 +124,8 @@ namespace pacman
 
         public bool IsPacman(char mapChar)
         {
+            // mapChar - char in map from game plan
+            // returns true for pacman in any direction
             if (mapChar == Global.RIGHT || mapChar == Global.LEFT || mapChar == Global.UP || mapChar == Global.DOWN)
             {
                 return true;
@@ -132,6 +141,8 @@ namespace pacman
 
         public void Move(int fromX, int fromY, int toX, int toY)
         {
+            // move item from one tile to another
+            // source tile is replaced with floor tile
             char mapChar = map[fromX, fromY];
             map[fromX, fromY] = Global.FLOOR;
             map[toX, toY] = mapChar;
@@ -139,16 +150,20 @@ namespace pacman
 
         public void ChangeOnPosition(int x, int y, char newChar)
         {
+            // change tile on coordinates
             map[x, y] = newChar;
         }
 
         public int CountDistance(int x, int y, int a, int b)
         {
+            // calculates distance using manhattan metric 
             return Math.Abs(x - a) + Math.Abs(y - b);
         }
 
         public List<int[]> FindFreeNeighbors(int x, int y)
         {
+            // looks at tiles up, down, right, left
+            // return free tiles or occupied by pacman as list of their coordinates
             int[][] potentialNeighbors = new[] {new[] {x - 1, y}, new[] {x + 1, y}, new[] {x, y - 1}, new[] {x, y + 1}};
             List<int[]> result = new List<int[]>();
             foreach (var neighbor in potentialNeighbors)
@@ -159,14 +174,14 @@ namespace pacman
                     result.Add(neighbor);
                 }
             }
-
             return result;
         }
     }
     
     public class Item
     {
-        public int x;
+        // generic item on the game plan
+        public int x;    // coordinates on the map in game plan
         public int y;
         public GamePlan gamePlan;
 
@@ -180,9 +195,10 @@ namespace pacman
 
     public class Pacman : Item
     {
+        // representing pacman in the game plan
         public Tuple<int, int>  Direction; // direction in x and y, one of them always zero - no diagonal movement
-        public char DirectionChar;
-        private Tuple<int, int> WishedDirection;
+        public char DirectionChar;    // >, <, ^ or v
+        private Tuple<int, int> WishedDirection;    // direction pacman wants to change to
 
         public Pacman(int x, int y, GamePlan gamePlan, char directionChar) : base(x, y, gamePlan)
         {
@@ -207,11 +223,13 @@ namespace pacman
             }
 
             this.WishedDirection = Direction;
-            // this.WishedDirection = DirectionGlobal.CharToDirection['^'];
         }
         
         public void Move(TimeSpan timeNow)
         {
+            // if current direction is different from wished dirrection
+            // tries to change direction
+            // then moves one step in direction
             if (!Direction.Equals(WishedDirection))
             {
                 int xInDir = x + WishedDirection.Item1;
@@ -226,6 +244,8 @@ namespace pacman
         }
         private void moveInDirection(TimeSpan timeNow)
         {
+            // moves in direction if the tile is free
+            // if new tile contains dot, eats dot
             int newX = x + Direction.Item1;
             int newY = y + Direction.Item2;
             char mapChar = gamePlan.what_is_on_position(newX, newY);
@@ -243,13 +263,14 @@ namespace pacman
 
         private void eat_dot(char dotChar, TimeSpan timeNow)
         {
+            // adds points for eating dot
+            // if it's a big dot, changes ghosts to Frightened mode
             gamePlan.curPoints += gamePlan.dotPoints;
             gamePlan.dotsLeft--;
             gamePlan.dotsEaten++;
-            Console.WriteLine("cur points: " + gamePlan.curPoints);
+            Console.WriteLine("cur points: " + gamePlan.curPoints);    
             if (gamePlan.IsBigDot(dotChar))
             {
-                // ToDo: pacman can eat the ghosts
                 foreach (var ghost in gamePlan.ghosts)
                 {
                     ghost.ChangeMode(GhostMode.Frightened, timeNow);
@@ -274,23 +295,23 @@ namespace pacman
 
     public enum GhostMode
     {
-        Wait,
-        Chase,
-        Scatter,
-        Frightened
+        Wait,        // wait in ghosts' home
+        Chase,       // chase pacman
+        Scatter,     // go to the home tile
+        Frightened   // move chaotically, pacman can eat ghosts
     }
     public abstract class Ghost : Item
     {
         public GhostMode mode;
-        public Tuple<int, int> direction;
-        public GhostMode startMode;
+        public Tuple<int, int> direction;    // direction in x and y, one of them always zero - no diagonal movement
+        public GhostMode startMode;          // mode to which ghost is turned in the begining of each level
         public int startTileX;
         public int startTileY;
         public int homeTileX;
         public int homeTileY;
 
         public TimeSpan modeLastChanged;
-        public int dotsEatenToStart;
+        public int dotsEatenToStart;            // until this much dots are eaten, ghost in Wait mode
         
         Random random = new Random();
         
@@ -305,10 +326,12 @@ namespace pacman
             this.modeLastChanged = TimeSpan.FromSeconds(0);
             this.direction = new Tuple<int, int>(0, 0);
         }
-        public abstract void Chase(TimeSpan timeNow);
+        public abstract void Chase(TimeSpan timeNow);    // each kind of ghost has different chase logic
         
         public void Move(TimeSpan timeNow)
         {
+            // moves ghosts for one step according to ghost mode
+            // checks time to change modes
             switch (mode)
             {
                 case GhostMode.Wait:
@@ -341,6 +364,7 @@ namespace pacman
                     }
                     else
                     {
+                        // ghost chooses a random tile on the game field as chase target
                         int a = random.Next(0, gamePlan.width);
                         int b = random.Next(0, gamePlan.height);
                         ChaseTarget(a, b, timeNow); 
@@ -355,9 +379,14 @@ namespace pacman
         
         public void ChaseTarget(int targetX, int targetY, TimeSpan timeNow)
         {
+            // gets all posible tiles to move to
+            // calculates distance from each tile to target tile
+            // chooses the tile with least distance
+            // but ghost can't turn change direction for 180 degrees -> IsOppositeDirection function
+            
             List<int[]> posibleMoves = gamePlan.FindFreeNeighbors(x, y);
             int smallestDistance = Int32.MaxValue;
-            int[] bestMove = new []{0, 0};     // ToDo: ??? 
+            int[] bestMove = new []{0, 0};     
             Tuple<int, int> finalDir = new Tuple<int, int>(0, 0);
             if (posibleMoves.Count == 1)    // if ghost meets a dead end it can turn 180 degrees
             {
@@ -379,6 +408,8 @@ namespace pacman
 
         public void GoToDoor(TimeSpan timeNow)
         {
+            // exits ghosts' home through the door
+            // when out starts chasing pacman
             int targetX = gamePlan.door[0];
             int targetY = gamePlan.door[1] - 1;    // one tile above the door
             if (x != targetX || y != targetY)
@@ -393,6 +424,7 @@ namespace pacman
 
         public void Wait(TimeSpan timeNow)
         {
+            // waits until enough dots are eaten, the exits th ghosts' home
             if (gamePlan.dotsEaten >= dotsEatenToStart)
             {
                 GoToDoor(timeNow);
@@ -402,6 +434,8 @@ namespace pacman
             
         private void changeCoordinates(int newX, int newY, Tuple<int, int> newDir, TimeSpan timeNow)
         {
+            // moves to new tile
+            // resolves conflicts - when ghost and pacman are on the same tile
             x = newX;
             y = newY;
             direction = newDir;
@@ -413,6 +447,8 @@ namespace pacman
 
         private void resolveGhostAndPacman(TimeSpan timeNow)
         {
+            // in Frightened mode - pacman kills ghost
+            // in other modes ghost kills pacman
             if (mode == GhostMode.Frightened)
             {
                 killGhost(timeNow);
@@ -424,12 +460,14 @@ namespace pacman
         }
         private void killPacman(TimeSpan timeNow)
         {
+            // all ghosts are reset to start positions
             gamePlan.livesLeft--;
             resetGhosts(timeNow);
         }
 
         private void killGhost(TimeSpan timeNow)
         {
+            // only killed ghost is reset to start
             ResetGhost(timeNow);
             ChangeMode(GhostMode.Frightened, timeNow);
             gamePlan.curPoints += gamePlan.ghostPoints;
@@ -437,6 +475,8 @@ namespace pacman
         }
         private void resetGhosts(TimeSpan timeNow)
         {
+            // reset all ghost
+            // set prepare flag -> game should be turned to Prepare mode
             foreach (var ghost in gamePlan.ghosts)
             {
                 ghost.ResetGhost(timeNow);
@@ -460,6 +500,8 @@ namespace pacman
         }
         public bool CheckTime(TimeSpan timeNow, TimeSpan lastTime, int period)
         {
+            // check if certain time period has pased
+            // period in seconds
             if (timeNow.TotalSeconds > lastTime.TotalSeconds + period)
             {
                 return true;
@@ -475,6 +517,7 @@ namespace pacman
 
         public bool IsOppositeDirection(Tuple<int, int> newDir)
         {
+            // checks if given direction is right opposite to current direction
             if (newDir.Item1 == direction.Item1 * -1 && newDir.Item2 == direction.Item2 * -1)
             {
                 return true;
@@ -492,6 +535,7 @@ namespace pacman
 
         public override void Chase(TimeSpan timeNow)
         {
+            // has pacman as target
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
             ChaseTarget(pacmanX, pacmanY, timeNow);
@@ -508,10 +552,11 @@ namespace pacman
 
         public override void Chase(TimeSpan timeNow)
         {
+            // chase target 3 tiles before packman in direction of movement
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
-            int targetX = pacmanX + gamePlan.pacman.Direction.Item1 * 4;  // 4 tiles before packman in direction of movement
-            int targetY = pacmanY + gamePlan.pacman.Direction.Item2 * 4;
+            int targetX = pacmanX + gamePlan.pacman.Direction.Item1 * 3;  
+            int targetY = pacmanY + gamePlan.pacman.Direction.Item2 * 3;
             ChaseTarget(targetX, targetY, timeNow);
         }
     }
@@ -526,6 +571,8 @@ namespace pacman
 
         public override void Chase(TimeSpan timeNow)
         {
+            // when far away - chase same as red ghost
+            // when crosses the minimal distance to pacman, changes target to home tile as in Scatter
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
             int pacmanDistance = gamePlan.CountDistance(pacmanX, pacmanY, x, y);
@@ -550,6 +597,7 @@ namespace pacman
 
         public override void Chase(TimeSpan timeNow)
         {
+            // chase the same as yellow ghost
             int pacmanX = gamePlan.pacman.x;
             int pacmanY = gamePlan.pacman.y;
             int pacmanDistance = gamePlan.CountDistance(pacmanX, pacmanY, x, y);
@@ -565,10 +613,11 @@ namespace pacman
     }
     public static class DirectionGlobal
     {
+        // everithing concerning direction
         public static Dictionary<char, Tuple<int, int>> CharToDirection;
         public static Dictionary<Tuple<int, int>, char> DirectionToChar;
 
-        public static Dictionary<Keys, Tuple<int, int>> KeyToDirection;
+        public static Dictionary<Keys, Tuple<int, int>> KeyToDirection;    // get direction from pressed key
 
         static DirectionGlobal()
         {
