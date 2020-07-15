@@ -29,9 +29,10 @@ namespace pacman
         public static char DOOR = '-';
         
         public static bool ResetToPrepareFlag;
-
-        public const string PATH_TO_MAP_FILE = "/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt";
-        public const string PATH_TO_DATA_FILE = "/Users/evgeniagolubeva/RiderProjects/pacman/pacman/level_data.txt";
+        
+        // /Users/evgeniagolubeva/RiderProjects/pacman/pacman/
+        public const string PATH_TO_MAP_FILE = "map3.txt";
+        public const string PATH_TO_DATA_FILE = "level_data.txt";
         
         public static Dictionary<char, Rectangle> ItemToSourceRectangle;
         public static Dictionary<int, Rectangle> GhostIdxToSourceRectangle;

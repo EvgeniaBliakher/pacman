@@ -13,6 +13,8 @@
         <None Remove="Icon.ico" />
         <None Remove="Icon.bmp" />
         <None Remove="app.manifest" />
+        <None Remove="map_big.txt" />
+        <None Remove="map.txt" />
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="Icon.ico" />
