@@ -37,10 +37,10 @@ namespace pacman
             livesLeft = 3;
             RedGhost red = new RedGhost(redStart[0], redStart[1], this, GhostMode.Chase, redHome[0], redHome[1]);
             PinkGhost pink = new PinkGhost(pinkStart[0], pinkStart[1], this, GhostMode.Wait, pinkHome[0], pinkHome[1]);
-            
+            BlueGhost blue = new BlueGhost(blueStart[0], blueStart[1], this, GhostMode.Wait, blueHome[0], blueHome[1]);
             YellowGhost yellow = new YellowGhost(yellowStart[0], yellowStart[1], this, GhostMode.Wait, yellowHome[0], yellowHome[1]);
 
-            ghosts = new Ghost[] {red, pink, yellow};
+            ghosts = new Ghost[] {red, pink, blue, yellow};
         }
 
         private void readMapFromFile(string pathToFile)
@@ -540,6 +540,30 @@ namespace pacman
             {
                 Scatter(timeNow);
             }
+        }
+    }
+
+    public class BlueGhost : Ghost
+    {
+        public const int minDistToPacman = 10;
+        public BlueGhost(int x, int y, GamePlan gamePlan, GhostMode mode, int homeTileX, int homeTileY) : base(x, y, gamePlan, mode, homeTileX, homeTileY)
+        {
+            dotsEatenToStart = 45;
+        }
+
+        public override void Chase(TimeSpan timeNow)
+        {
+            int pacmanX = gamePlan.pacman.x;
+            int pacmanY = gamePlan.pacman.y;
+            int pacmanDistance = gamePlan.CountDistance(pacmanX, pacmanY, x, y);
+            if (pacmanDistance >= minDistToPacman)
+            {
+                ChaseTarget(pacmanX, pacmanY, timeNow);
+            }
+            else
+            {
+                Scatter(timeNow);
+            }   
         }
     }
     public static class DirectionGlobal

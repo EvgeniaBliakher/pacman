@@ -11,7 +11,7 @@ namespace pacman
         public static int PICTURESIZE = 24;
         public static int DOTPOINTS = 10;
         public static int GHOSTPOINTS = 100;
-        public const int GHOSTCOUNT = 3;
+        public const int GHOSTCOUNT = 4;
         
         public static char WALL = 'X';
         public static char FLOOR = ' ';
@@ -128,6 +128,8 @@ namespace pacman
         private Texture2D startTexture;
         private Texture2D iconsTexture;
         private Texture2D textTexture;
+        private Texture2D winTexture;
+        private Texture2D loseTexture;
 
         private GamePlan gamePlan;
         private GameMode gameMode;
@@ -149,7 +151,7 @@ namespace pacman
                 new []{11, 10}, new []{0, 22},
                 new []{14, 11}, new []{24, 22});   
             //ToDo: Change to relative path
-            gameMode = GameMode.Start;
+            gameMode = GameMode.Start; 
             
             this.TargetElapsedTime = new TimeSpan(0,0,0,0,180);
         }
@@ -168,6 +170,8 @@ namespace pacman
             startTexture = this.Content.Load<Texture2D>("start_frame");
             iconsTexture = this.Content.Load<Texture2D>("all_icons_0");
             textTexture = this.Content.Load<Texture2D>("letters_numbers");
+            winTexture = this.Content.Load<Texture2D>("win_frame");
+            loseTexture = this.Content.Load<Texture2D>("lose_frame");
         }
 
         protected override void Update(GameTime gameTime)
@@ -247,9 +251,17 @@ namespace pacman
                     }
                     break;
                 case GameMode.Win:
+                    if (state.GetPressedKeys().Length > 0)
+                    {
+                        gameMode = GameMode.Play;
+                    }
                     break;
                 
                 case GameMode.Lose:
+                    if (state.GetPressedKeys().Length > 0)
+                    {
+                        gameMode = GameMode.Play;
+                    }
                     break;
                     
             }
@@ -288,6 +300,19 @@ namespace pacman
                 case GameMode.Play:
                     drawGameplan();
                     drawLivesAndScore();
+                    break;
+                case GameMode.Win:
+                    _spriteBatch.Begin();
+                    _spriteBatch.Draw(winTexture, Vector2.Zero, Color.White);
+                    int textLine = 420;
+                    int offsetX = 180 + 120 + 5*24;
+                    drawScore(offsetX, textLine);
+                    _spriteBatch.End();
+                    break;
+                case GameMode.Lose:
+                    _spriteBatch.Begin();
+                    _spriteBatch.Draw(loseTexture, Vector2.Zero, Color.White);
+                    _spriteBatch.End();
                     break;
             }
 
@@ -358,16 +383,22 @@ namespace pacman
             {
                 int points = gamePlan.curPoints;
                 int offset = 23 * Global.PICTURESIZE;
-                while (points > 0)
-                {
-                    int digit = points % 10;
-                    Rectangle digitRect = SourceRectangle.numberRectangle(digit);
-                    _spriteBatch.Draw(textTexture, new Vector2(offset, textLine), digitRect, Color.White );
-                    offset -= Global.PICTURESIZE;
-                    points /= 10;
-                }
+                drawScore(offset, textLine);
             }
             _spriteBatch.End();
+        }
+
+        private void drawScore(int offsetX, int textLine)
+        {
+            int points = gamePlan.curPoints;
+            while (points > 0)
+            {
+                int digit = points % 10;
+                Rectangle digitRect = SourceRectangle.numberRectangle(digit);
+                _spriteBatch.Draw(textTexture, new Vector2(offsetX, textLine), digitRect, Color.White );
+                offsetX -= Global.PICTURESIZE;
+                points /= 10;
+            }
         }
 
         private void drawCountDown()
