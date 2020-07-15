@@ -29,12 +29,12 @@ namespace pacman
         public GamePlan(string pathToMap, int dotPoints, int ghostPoints, int[] redStart, int[] redHome, int[] pinkStart, int[] pinkHome,
             int[] blueStart, int[] blueHome, int[] yellowStart, int[] yellowHome)
         {
-            readMapFromFile(pathToMap);
+            ReadMapFromFile(pathToMap);
             this.dotPoints = dotPoints;
             this.ghostPoints = ghostPoints;
             this.curPoints = 0;
             dotsEaten = 0;
-            livesLeft = 3;
+            livesLeft = Global.MAXLIVES;
             RedGhost red = new RedGhost(redStart[0], redStart[1], this, GhostMode.Chase, redHome[0], redHome[1]);
             PinkGhost pink = new PinkGhost(pinkStart[0], pinkStart[1], this, GhostMode.Wait, pinkHome[0], pinkHome[1]);
             BlueGhost blue = new BlueGhost(blueStart[0], blueStart[1], this, GhostMode.Wait, blueHome[0], blueHome[1]);
@@ -43,7 +43,7 @@ namespace pacman
             ghosts = new Ghost[] {red, pink, blue, yellow};
         }
 
-        private void readMapFromFile(string pathToFile)
+        public void ReadMapFromFile(string pathToFile)
         {
             System.IO.StreamReader sr = new StreamReader(pathToFile);
             height = int.Parse(sr.ReadLine());
@@ -290,9 +290,6 @@ namespace pacman
         public int homeTileY;
 
         public TimeSpan modeLastChanged;
-        public const int chaseTimeSec = 20;
-        public const int scatterTimeSec = 7;
-        public const int frightenedTimeSec = 10;
         public int dotsEatenToStart;
         
         Random random = new Random();
@@ -318,7 +315,7 @@ namespace pacman
                     Wait(timeNow);
                     break;
                 case GhostMode.Chase:
-                    if (CheckTime(timeNow, modeLastChanged, chaseTimeSec))
+                    if (CheckTime(timeNow, modeLastChanged, Global.chaseTimeSec))
                     {
                         ChangeMode(GhostMode.Scatter, timeNow);
                     }
@@ -328,7 +325,7 @@ namespace pacman
                     }
                     break;
                 case GhostMode.Scatter:
-                    if (CheckTime(timeNow, modeLastChanged, scatterTimeSec))
+                    if (CheckTime(timeNow, modeLastChanged, Global.scatterTimeSec))
                     {
                         ChangeMode(GhostMode.Chase, timeNow);
                     }
@@ -338,7 +335,7 @@ namespace pacman
                     }
                     break;
                 case GhostMode.Frightened:
-                    if (CheckTime(timeNow, modeLastChanged, frightenedTimeSec))
+                    if (CheckTime(timeNow, modeLastChanged, Global.frightenedTimeSec))
                     {
                         ChangeMode(GhostMode.Scatter, timeNow);    //ToDo: change back to mode before frightened
                     }
@@ -433,7 +430,7 @@ namespace pacman
 
         private void killGhost(TimeSpan timeNow)
         {
-            resetGhost(this, timeNow);
+            ResetGhost(timeNow);
             ChangeMode(GhostMode.Frightened, timeNow);
             gamePlan.curPoints += gamePlan.ghostPoints;
             Console.WriteLine("ghost eaten + " + Global.GHOSTPOINTS);
@@ -442,16 +439,16 @@ namespace pacman
         {
             foreach (var ghost in gamePlan.ghosts)
             {
-                resetGhost(ghost, timeNow);
+                ghost.ResetGhost(timeNow);
             }
             Global.ResetToPrepareFlag = true;
         }
 
-        private void resetGhost(Ghost ghost, TimeSpan timeNow)
+        public void ResetGhost(TimeSpan timeNow)
         {
-            ghost.x = ghost.startTileX;
-            ghost.y = ghost.startTileY;
-            ghost.ChangeMode(ghost.startMode, timeNow);
+            this.x = this.startTileX;
+            this.y = this.startTileY;
+            this.ChangeMode(this.startMode, timeNow);
         }
 
         public void FrightenGhosts(TimeSpan timeNow)

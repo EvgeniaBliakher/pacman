@@ -12,6 +12,11 @@ namespace pacman
         public static int DOTPOINTS = 10;
         public static int GHOSTPOINTS = 100;
         public const int GHOSTCOUNT = 4;
+        public const int MAXLIVES = 3;
+
+        public static int chaseTimeSec;
+        public static int scatterTimeSec;
+        public static int frightenedTimeSec;
         
         public static char WALL = 'X';
         public static char FLOOR = ' ';
@@ -24,12 +29,19 @@ namespace pacman
         public static char DOOR = '-';
         
         public static bool ResetToPrepareFlag;
+
+        public const string PATH_TO_MAP_FILE = "/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt";
+        public const string PATH_TO_DATA_FILE = "/Users/evgeniagolubeva/RiderProjects/pacman/pacman/level_data.txt";
         
         public static Dictionary<char, Rectangle> ItemToSourceRectangle;
         public static Dictionary<int, Rectangle> GhostIdxToSourceRectangle;
         static Global()
         {
             ResetToPrepareFlag = false;
+
+            chaseTimeSec = 0;
+            scatterTimeSec = 0;
+            frightenedTimeSec = 0;
             
             ItemToSourceRectangle = new Dictionary<char, Rectangle>();
             ItemToSourceRectangle.Add(WALL, SourceRectangle.wall);
@@ -134,6 +146,8 @@ namespace pacman
         private GamePlan gamePlan;
         private GameMode gameMode;
 
+        private LevelData levelData;
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -144,14 +158,15 @@ namespace pacman
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
             
-            gamePlan = new GamePlan("/Users/evgeniagolubeva/RiderProjects/pacman/pacman/map3.txt", 
-                Global.DOTPOINTS, Global.GHOSTPOINTS,
+            gamePlan = new GamePlan(Global.PATH_TO_MAP_FILE, Global.DOTPOINTS, Global.GHOSTPOINTS,
                 new int[] {12, 8}, new int[] {0, 0},
                 new []{10, 10}, new []{24, 0},
                 new []{11, 10}, new []{0, 22},
                 new []{14, 11}, new []{24, 22});   
             //ToDo: Change to relative path
             gameMode = GameMode.Start; 
+            
+            levelData = new LevelData(Global.PATH_TO_DATA_FILE);
             
             this.TargetElapsedTime = new TimeSpan(0,0,0,0,180);
         }
@@ -183,6 +198,7 @@ namespace pacman
                 case GameMode.Start:
                     if (state.GetPressedKeys().Length > 0)
                     {
+                        levelData.GetNextLevelData();
                         gameMode = GameMode.Prepare;
                     }
                     break;
@@ -253,14 +269,16 @@ namespace pacman
                 case GameMode.Win:
                     if (state.GetPressedKeys().Length > 0)
                     {
-                        gameMode = GameMode.Play;
+                        PrepareNextLevel(true, Global.PATH_TO_MAP_FILE, gameTime.TotalGameTime);
+                        gameMode = GameMode.Prepare;
                     }
                     break;
                 
                 case GameMode.Lose:
                     if (state.GetPressedKeys().Length > 0)
                     {
-                        gameMode = GameMode.Play;
+                        PrepareNextLevel(false, Global.PATH_TO_MAP_FILE, gameTime.TotalGameTime);
+                        gameMode = GameMode.Prepare;
                     }
                     break;
                     
@@ -272,6 +290,26 @@ namespace pacman
             base.Update(gameTime);
         }
 
+        public void PrepareNextLevel(bool getNextLevel, string pathToMapFile, TimeSpan timeNow)
+        {
+            prepareGamePlan(pathToMapFile);
+            if (getNextLevel)
+            {
+                levelData.GetNextLevelData();
+            }
+            foreach (var ghost in gamePlan.ghosts)
+            {
+                ghost.ResetGhost(timeNow);
+            }
+        }
+        
+        private void prepareGamePlan(string pathToMapFile)
+        {
+            gamePlan.ReadMapFromFile(pathToMapFile);
+            gamePlan.dotsEaten = 0;
+            gamePlan.curPoints = 0;
+            gamePlan.livesLeft = Global.MAXLIVES;
+        }
         public void MoveGhosts(TimeSpan timeNow)
         {
             foreach (var ghost in gamePlan.ghosts)

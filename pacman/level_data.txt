@@ -1,9 +1,10 @@
-20      # LEVEL     # chase time
-7                   # scatter time
-10                  # frightened time
-30      # LEVEL
+3
+20
+7
+10
+30
 5
 10
-30      # LEVEL
+30
 5
 5

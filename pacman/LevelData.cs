@@ -6,47 +6,65 @@ namespace pacman
     public class LevelData
     {
         public int curLevel;
-        public int chaseTimeSec;
-        public int scatterTimeSec;
-        public int frightenedTimeSec;
+        public int curChaseTimeSec;
+        public int curScatterTimeSec;
+        public int curFrightenedTimeSec;
 
-        public long levelDataOffset;
-
-        public LevelData()
+        public int levelsCount;
+        public int[] chaseTime;
+        public int[] scatterTime;
+        public int[] frightenedTime;
+        
+        public LevelData(string pathToDataFile)
         {
-            this.curLevel = 1;
-            this.levelDataOffset = 0;
+            this.curLevel = 0;
+            ReadLevelData(pathToDataFile);
         }
 
         public void ReadLevelData(string pathToDataFile)
         {
+            // Structure of level data file:
+            // first line - number of levels
+            // then 3 lines for each level
+            // first contains chase time in seconds, second scatter time, third frightened time
+            // there should be no gaps between levels
             
+            System.IO.StreamReader sr = new StreamReader(pathToDataFile);
+            levelsCount = int.Parse(sr.ReadLine());
+            chaseTime = new int[levelsCount + 1];    // level info starts at index 1
+            scatterTime = new int[levelsCount + 1];
+            frightenedTime = new int[levelsCount + 1];
+            for (int i = 1; i <= levelsCount ; i++)
+            {
+                chaseTime[i] = int.Parse(sr.ReadLine());
+                scatterTime[i] = int.Parse(sr.ReadLine());
+                frightenedTime[i] = int.Parse(sr.ReadLine());
+            }
         }
-        
-        
-    }
 
-    public class Reader
-    {
-        public static int Precti()
+        public void GetNextLevelData()
         {
-            int z = Console.Read();
-            while (((z < '0') && (z!= '-')) || (z > '9'))
-                z = Console.Read();
-            //ToDo: vyresit konec!!
-            int x = 0;
-            int sign = 1;
-            if (z == '-')
+            // increments current level until max level is reached
+            // then repeatedly returns level data of the last level
+            
+            if (curLevel < levelsCount)
             {
-                sign = -1;
-                z = Console.Read();
+                curLevel++;
             }
-            while ((z >= '0') && (z <= '9'))
-            {
-                x = 10 * x + z - '0';
-                z = Console.Read();
-            }
-            return x * sign;
+
+            curChaseTimeSec = chaseTime[curLevel];
+            curScatterTimeSec = scatterTime[curLevel];
+            curFrightenedTimeSec = frightenedTime[curLevel];
+            
+            loadLevelDataToGlobal();
+        }
+
+        private void loadLevelDataToGlobal()
+        {
+            Global.chaseTimeSec = curChaseTimeSec;
+            Global.scatterTimeSec = curScatterTimeSec;
+            Global.frightenedTimeSec = curFrightenedTimeSec;
         }
     }
+    
 }
